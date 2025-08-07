@@ -1,0 +1,5 @@
+*.env
+*venv/
+*.pem
+*__pycache__/
+!example.env
