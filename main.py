@@ -9,6 +9,7 @@ from sentence_transformers import SentenceTransformer
 import google.generativeai as genai  # <-- Import Google's library
 import time
 import random
+import requests  # Added for Slack notifications
 
 # --- INITIALIZATION ---
 # Load environment variables and initialize models just once when the app starts
@@ -72,6 +73,16 @@ class QueryResponse(BaseModel):
     answer: str
     source_context: str
     success: bool
+
+class SlackRequest(BaseModel):
+    message: str
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "message": "High CPU usage detected on production database server"
+            }
+        }
 
 # --- API ENDPOINTS ---
 @app.get("/")
@@ -217,6 +228,30 @@ Instructions:
         print(f"DEBUG: General query processing error: {e}")  # Added debug logging
         print(f"DEBUG: Error type: {type(e).__name__}")
         raise HTTPException(status_code=500, detail=f"Query processing failed: {str(e)}")
+
+@app.post("/notify-slack/")
+def notify_slack(request: SlackRequest):
+    """Sends a message to a configured Slack channel."""
+    slack_webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+    if not slack_webhook_url:
+        raise HTTPException(status_code=500, detail="Slack webhook URL is not configured.")
+
+    try:
+        print(f"DEBUG: Sending message to Slack: {request.message[:100]}...")  # Added debug logging
+        
+        # Format the message for Slack's API
+        payload = {"text": f"🤖 DevOps Sentinel Alert:\n\n{request.message}"}
+
+        # Send the request
+        response = requests.post(slack_webhook_url, json=payload, timeout=10)
+        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+
+        print("DEBUG: Successfully sent message to Slack")  # Added debug logging
+        return {"success": True, "message": "Notification sent to Slack."}
+        
+    except requests.exceptions.RequestException as e:
+        print(f"DEBUG: Failed to send to Slack: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send notification to Slack: {str(e)}")
 
 # --- Additional utility endpoints ---
 @app.get("/stats")
