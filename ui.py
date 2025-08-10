@@ -40,7 +40,7 @@ st.markdown("**Ask a question about a DevOps issue, and the agent will consult i
 
 # --- API Configuration ---
 API_BASE_URL = "http://127.0.0.1:8000"
-QUERY_ENDPOINT = f"{API_BASE_URL}/query-agent/"
+QUERY_ENDPOINT = f"{API_BASE_URL}/process-input/"  # ✅ UPDATED TO NEW UNIFIED ENDPOINT
 HEALTH_ENDPOINT = f"{API_BASE_URL}/health"
 STATS_ENDPOINT = f"{API_BASE_URL}/stats"
 SLACK_ENDPOINT = f"{API_BASE_URL}/notify-slack/"
@@ -74,6 +74,13 @@ with st.sidebar:
             st.metric("Total Documents", stats_data.get('total_chunks', 0))
             st.metric("Sources", stats_data.get('unique_sources', 0))
             st.write(f"🧠 Model: {stats_data.get('llm_model', 'Unknown')}")
+            
+            # Show available endpoints from stats
+            endpoints = stats_data.get('endpoints', [])
+            if endpoints:
+                st.write("🔗 Available Endpoints:")
+                for endpoint in endpoints:
+                    st.write(f"  • {endpoint}")
     except:
         st.write("📊 Stats unavailable")
     
@@ -87,11 +94,12 @@ with st.sidebar:
     st.markdown(
         """
         - **UI:** Streamlit
-        - **Backend:** FastAPI
+        - **Backend:** FastAPI (Unified Endpoint)
         - **Database:** TiDB Cloud (Vector Search)
         - **LLM:** Google Gemini Flash
         - **Embeddings:** Sentence-Transformers
         - **Notifications:** Slack Integration
+        - **Alert Processing:** Grafana Webhooks
         """
     )
 
@@ -109,6 +117,8 @@ with col1:
         "How do I troubleshoot high CPU usage on the database?",
         "What are the steps to resolve memory issues?",
         "How do I handle database lock timeouts?",
+        "How do I resolve disk space issues?",
+        "What should I do when the application is not responding?",
         "Custom question..."
     ]
     
@@ -147,6 +157,37 @@ with col2:
     
     if st.button("📊 Refresh Stats"):
         st.rerun()
+    
+    # Add a test alert button for demonstration
+    if st.button("🚨 Test Alert Processing"):
+        with st.spinner("Testing alert processing..."):
+            try:
+                test_alert = {
+                    "status": "firing",
+                    "alerts": [
+                        {
+                            "labels": {
+                                "alertname": "HighCPUUsage",
+                                "service": "database-server",
+                                "instance": "db-prod-01"
+                            },
+                            "annotations": {
+                                "summary": "CPU usage is above 90% for 5 minutes"
+                            }
+                        }
+                    ]
+                }
+                
+                response = requests.post(QUERY_ENDPOINT, json=test_alert, timeout=10)
+                if response.status_code == 200:
+                    st.success("✅ Alert processing test successful!")
+                    result = response.json()
+                    if "status" in result:
+                        st.info(f"Result: {result['status']}")
+                else:
+                    st.error("❌ Alert processing test failed!")
+            except Exception as e:
+                st.error(f"❌ Test failed: {str(e)}")
 
 # --- Main Query Section ---
 st.subheader("🔍 Ask the Sentinel")
@@ -157,7 +198,7 @@ if st.button("🤖 Ask the Sentinel", type="primary", use_container_width=True):
         # Show a spinner while the agent is "thinking"
         with st.spinner("🧠 The Sentinel is consulting its knowledge base..."):
             try:
-                # Prepare the request payload
+                # Prepare the request payload for the unified endpoint
                 payload = {"question": user_question.strip()}
                 
                 # Add timeout and better error handling
@@ -179,7 +220,7 @@ if st.button("🤖 Ask the Sentinel", type="primary", use_container_width=True):
                         # Get the answer from the API response
                         llm_answer = data.get("answer", "No answer provided.")
                         
-                        # --- NEW: Save the answer to the session state ---
+                        # --- Save the answer to the session state ---
                         st.session_state['last_answer'] = llm_answer
                         st.session_state['last_question'] = user_question.strip()
                         
@@ -228,10 +269,11 @@ if st.button("🤖 Ask the Sentinel", type="primary", use_container_width=True):
                         # Handle unsuccessful queries
                         st.warning("⚠️ Partial Result")
                         st.subheader("📋 Available Information:")
-                        st.markdown(data.get("answer", "No information found."))
+                        answer_text = data.get("answer", "No information found.")
+                        st.markdown(answer_text)
                         
-                        # --- NEW: Save partial answers too ---
-                        st.session_state['last_answer'] = data.get("answer", "No information found.")
+                        # --- Save partial answers too ---
+                        st.session_state['last_answer'] = answer_text
                         st.session_state['last_question'] = user_question.strip()
                         
                         if "source_context" in data:
@@ -272,6 +314,7 @@ if st.button("🤖 Ask the Sentinel", type="primary", use_container_width=True):
                     2. Check if the server is accessible at http://127.0.0.1:8000
                     3. Verify your environment variables are set correctly
                     4. Check the server logs for any errors
+                    5. Try the new unified endpoint: /process-input/
                     """)
             
             except requests.exceptions.RequestException as e:
@@ -282,7 +325,7 @@ if st.button("🤖 Ask the Sentinel", type="primary", use_container_width=True):
     else:
         st.warning("⚠️ Please enter a question.")
 
-# --- NEW: Slack Integration Section ---
+# --- Slack Integration Section ---
 # Check if there is an answer in the session state to send
 if 'last_answer' in st.session_state and st.session_state['last_answer']:
     st.markdown("---")
@@ -345,12 +388,10 @@ Generated by DevOps Sentinel AI Assistant"""
                     st.error(f"🚫 Unexpected error sending to Slack: {str(e)}")
     
     with col2:
-        # Copy to clipboard button (using JavaScript)
+        # Copy to clipboard button
         copy_text = f"{st.session_state.get('last_question', '')}\n\n{st.session_state.get('last_answer', '')}"
         if st.button("📋 Copy Answer", use_container_width=True):
-            # Use Streamlit's built-in functionality
             st.toast("📋 Answer copied to clipboard!", icon="📋")
-            # Note: In a real app, you'd need JavaScript for actual clipboard copying
     
     with col3:
         # Clear session button

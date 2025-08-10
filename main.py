@@ -84,6 +84,18 @@ class SlackRequest(BaseModel):
             }
         }
 
+class AlertRequest(BaseModel):
+    title: str
+    message: str
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "title": "Database Connection Timeout Alert",
+                "message": "Multiple connection timeouts detected on production database server"
+            }
+        }
+
 # --- API ENDPOINTS ---
 @app.get("/")
 def root():
@@ -253,6 +265,151 @@ def notify_slack(request: SlackRequest):
         print(f"DEBUG: Failed to send to Slack: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to send notification to Slack: {str(e)}")
 
+@app.post("/alert-trigger/")
+async def alert_trigger(request: AlertRequest):
+    """
+    Receives an alert, processes it through the full RAG pipeline, 
+    and sends a notification to Slack with AI-generated solution.
+    """
+    print(f"DEBUG: Received alert: {request.title}")
+    
+    try:
+        # --- 1. Run the RAG Process (Logic from /query-agent/) ---
+        question = request.message
+        query_embedding = sentence_model.encode(question).tolist()
+        print(f"DEBUG: Generated embedding for alert with {len(query_embedding)} dimensions")
+        
+        # Convert to proper vector format for TiDB
+        query_vector = f"[{','.join(map(str, query_embedding))}]"
+        
+        # Perform vector search in TiDB to get context
+        with engine.connect() as connection:
+            stmt = text("""
+                SELECT 
+                    content_chunk,
+                    source_file,
+                    VEC_COSINE_DISTANCE(embedding, VEC_FROM_TEXT(:query_vector)) as distance
+                FROM knowledgebase
+                ORDER BY distance ASC
+                LIMIT 2;
+            """)
+            
+            result = connection.execute(stmt, {"query_vector": query_vector})
+            rows = result.fetchall()
+        
+        print(f"DEBUG: Found {len(rows)} relevant documents for alert")
+        
+        if not rows:
+            print("DEBUG: No relevant runbook found for this alert")
+            return {
+                "error": "No relevant runbook documents found for this alert.",
+                "success": False,
+                "alert_title": request.title
+            }
+
+        # Get the best matching context
+        retrieved_chunk = rows[0][0]  # content_chunk
+        source_file = rows[0][1]     # source_file
+        
+        # Combine multiple contexts if available
+        all_contexts = "\n\n".join([row[0] for row in rows])
+        
+        print(f"DEBUG: Using runbook context from: {source_file}")
+
+        # --- 2. Generate Answer with Gemini ---
+        try:
+            print("DEBUG: Calling Gemini API for alert processing...")
+            
+            prompt = f"""
+You are an expert DevOps incident response assistant. An alert has fired with the following details:
+
+**Alert Title:** {request.title}Invoke-RestMethod -Uri "http://127.0.0.1:8000/process-input/" -Method POST -ContentType "application/json" -Body '{"question": "What should I do about database connection timeouts?"}'Invoke-RestMethod -Uri "http://127.0.0.1:8000/process-input/" -Method POST -ContentType "application/json" -Body '{"question": "What should I do about database connection timeouts?"}'Invoke-RestMethod -Uri "http://127.0.0.1:8000/process-input/" -Method POST -ContentType "application/json" -Body '{"question": "What should I do about database connection timeouts?"}'
+**Alert Message:** {request.message}
+
+Based on the runbook context below, provide a concise, actionable solution:
+
+**Runbook Context:**
+{all_contexts}
+
+Instructions:
+- Provide immediate action steps to resolve this alert
+- Include specific commands or procedures if available in the context
+- Prioritize critical actions first
+- Keep the response focused and actionable for incident response
+- If the context doesn't fully cover the alert, mention what steps are available
+"""
+            
+            # Try calling Gemini with retry logic
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = generation_model.generate_content(prompt)
+                    llm_answer = response.text
+                    print("DEBUG: Successfully received alert response from Gemini")
+                    break
+                except Exception as retry_error:
+                    if "429" in str(retry_error) or "quota" in str(retry_error).lower():
+                        if attempt < max_retries - 1:
+                            wait_time = (2 ** attempt) + random.uniform(0, 1)
+                            print(f"DEBUG: Rate limited, waiting {wait_time:.1f} seconds before retry {attempt + 1}/{max_retries}")
+                            time.sleep(wait_time)
+                            continue
+                    raise retry_error
+                    
+        except Exception as e:
+            print(f"DEBUG: Gemini failed on alert processing: {e}")
+            # Fallback to context-only response
+            llm_answer = f"Alert received but LLM service unavailable. Here's the relevant runbook information:\n\n{retrieved_chunk}"
+
+        # --- 3. Send the Final Answer to Slack ---
+        slack_webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+        if not slack_webhook_url:
+            print("DEBUG: Slack webhook URL not configured")
+            return {
+                "error": "Slack webhook URL is not configured.",
+                "success": False,
+                "generated_solution": llm_answer,
+                "alert_title": request.title
+            }
+        
+        # Format the final message for Slack
+        final_message = f"""🚨 **ALERT: {request.title}** 🚨
+
+📋 **Alert Details:**
+{request.message}
+
+🤖 **DevOps Sentinel's Recommended Action:**
+{llm_answer}
+
+📚 **Source:** {source_file}
+⏰ **Processed:** {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}"""
+        
+        try:
+            print("DEBUG: Sending alert resolution to Slack...")
+            payload = {"text": final_message}
+            slack_response = requests.post(slack_webhook_url, json=payload, timeout=10)
+            slack_response.raise_for_status()
+
+            print("DEBUG: Alert notification sent to Slack successfully")
+            return {
+                "success": True,
+                "message": "Alert processed and notification sent to Slack.",
+                "alert_title": request.title
+            }
+            
+        except requests.exceptions.RequestException as e:
+            print(f"DEBUG: Failed to send alert notification to Slack: {e}")
+            return {
+                "success": False,
+                "error": f"Alert processed but failed to send notification to Slack: {str(e)}",
+                "generated_solution": llm_answer,
+                "alert_title": request.title
+            }
+        
+    except Exception as e:
+        print(f"DEBUG: General alert processing error: {e}")
+        raise HTTPException(status_code=500, detail=f"Alert processing failed: {str(e)}")
+
 # --- Additional utility endpoints ---
 @app.get("/stats")
 def get_stats():
@@ -296,3 +453,253 @@ def test_gemini(request: QueryRequest):
         print(f"DEBUG: Error type: {type(e).__name__}")
         print(f"DEBUG: Error details: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Gemini API failed: {str(e)}")
+
+@app.post("/grafana-alert/", response_model=QueryResponse)
+def grafana_alert(request_data: dict):
+    """
+    Receive a Grafana alert or a direct question, process it, 
+    and return the answer or send a notification to Slack.
+    """
+    is_alert = False
+    question = ""
+
+    # --- 1. Check the input type and generate a question ---
+    if "question" in request_data:
+        # It's a direct query from our Streamlit UI
+        print("DEBUG: Processing direct question.")
+        question = request_data["question"]
+
+    elif request_data.get("status") == "firing" and "alerts" in request_data:
+        # It's a structured Grafana alert
+        print("DEBUG: Processing structured Grafana alert.")
+        is_alert = True
+        try:
+            # Extract info from the first alert in the payload
+            alert_details = request_data["alerts"][0]["labels"]
+            alert_name = alert_details.get("alertname", "Unknown Alert")
+            service_name = alert_details.get("service", "an unknown service")
+            
+            # This is the "Reasoning" step: transform data into a question
+            question = f"What are the steps to resolve the '{alert_name}' for '{service_name}'?"
+            print(f"DEBUG: Transformed alert into question: '{question}'")
+
+        except (KeyError, IndexError) as e:
+            raise HTTPException(status_code=400, detail=f"Invalid Grafana alert format: {e}")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid input format. Must be a direct question or a Grafana alert.")
+
+    # --- 2. Run the RAG Pipeline (this logic is the same) ---
+    query_embedding = sentence_model.encode(question).tolist()
+
+    retrieved_chunk = None
+    with engine.connect() as connection:
+        # ... (Your TiDB vector search query remains the same here) ...
+        stmt = text("""
+            SELECT content_chunk
+            FROM knowledgebase
+            ORDER BY VEC_COS_SIM(embedding, CAST(:query_embedding AS JSON)) DESC
+            LIMIT 1;
+        """)
+        result = connection.execute(stmt, {"query_embedding": str(query_embedding)}).fetchone()
+        if result:
+            retrieved_chunk = result[0]
+
+    if not retrieved_chunk:
+        return {"answer": "Could not find relevant documents.", "success": False}
+
+    # --- 3. Generate Answer with Gemini (this logic is the same) ---
+    try:
+        prompt = f"Context: {retrieved_chunk}\n\nQuestion: {question}"
+        # ... (Your Gemini call and prompt engineering remains the same here) ...
+        response = generation_model.generate_content(prompt)
+        llm_answer = response.text
+    except Exception as e:
+        return {"answer": f"LLM service unavailable: {e}", "success": False}
+
+    # --- 4. Send Response or Notification ---
+    if is_alert:
+        # If it was an alert, send the solution to Slack
+        final_message = f"🚨 **Alert: {alert_name}** 🚨\n\n**🤖 Sentinel's Recommended Action:**\n{llm_answer}"
+        # ... (Your Slack notification logic goes here) ...
+        requests.post(os.getenv("SLACK_WEBHOOK_URL"), json={"text": final_message})
+        print("DEBUG: Sent alert resolution to Slack.")
+        return {"status": "Alert processed and sent to Slack."}
+    else:
+        # If it was a direct question, return the answer to the UI
+        return {"question": question, "answer": llm_answer, "source_context": retrieved_chunk, "success": True}
+
+@app.post("/process-input/")
+async def process_input(request_data: dict):
+    """
+    A single, smart endpoint that handles both direct questions (from UI)
+    and structured alerts (from Grafana).
+    """
+    question = ""
+    is_alert = False
+    alert_name = ""
+    service_name = ""
+
+    # --- 1. Check the input type and generate a question ---
+    if "question" in request_data:
+        # It's a direct query from our Streamlit UI
+        print("DEBUG: Processing direct question.")
+        question = request_data["question"]
+    
+    elif request_data.get("status") == "firing" and "alerts" in request_data:
+        # It's a structured Grafana alert
+        print("DEBUG: Processing structured Grafana alert.")
+        is_alert = True
+        try:
+            # Extract info from the first alert in the payload
+            alert_details = request_data["alerts"][0]["labels"]
+            alert_name = alert_details.get("alertname", "Unknown Alert")
+            service_name = alert_details.get("service", "an unknown service")
+            instance = alert_details.get("instance", "unknown instance")
+            
+            # Get summary from annotations if available
+            annotations = request_data["alerts"][0].get("annotations", {})
+            summary = annotations.get("summary", "No summary available")
+            
+            # This is the "Reasoning" step: transform data into a question
+            question = f"What are the steps to resolve the '{alert_name}' alert for '{service_name}' on instance '{instance}'? Alert details: {summary}"
+            print(f"DEBUG: Transformed alert into question: '{question}'")
+
+        except (KeyError, IndexError) as e:
+            print(f"DEBUG: Invalid Grafana alert format: {e}")
+            raise HTTPException(status_code=400, detail=f"Invalid Grafana alert format: {e}")
+            
+    elif "title" in request_data and "message" in request_data:
+        # It's a legacy alert format (for backward compatibility)
+        print("DEBUG: Processing legacy alert format.")
+        is_alert = True
+        alert_name = request_data["title"]
+        question = request_data["message"]
+        
+    else:
+        raise HTTPException(status_code=400, detail="Invalid input format. Must be a direct question or a Grafana alert.")
+
+    print(f"DEBUG: Final question to process: {question}")
+
+    # Use the same RAG logic from your query-agent endpoint
+    try:
+        print("DEBUG: Creating embedding for the question...")
+        query_embedding = sentence_model.encode(question).tolist()
+        print(f"DEBUG: Generated embedding with {len(query_embedding)} dimensions")
+        
+        # Convert to proper vector format for TiDB
+        query_vector = f"[{','.join(map(str, query_embedding))}]"
+        
+        # Perform vector search in TiDB to get context
+        with engine.connect() as connection:
+            stmt = text("""
+                SELECT 
+                    content_chunk,
+                    source_file,
+                    VEC_COSINE_DISTANCE(embedding, VEC_FROM_TEXT(:query_vector)) as distance
+                FROM knowledgebase
+                ORDER BY distance ASC
+                LIMIT 2;
+            """)
+            
+            result = connection.execute(stmt, {"query_vector": query_vector})
+            rows = result.fetchall()
+        
+        print(f"DEBUG: Found {len(rows)} relevant documents")
+        
+        if not rows:
+            return {
+                "answer": "Could not find relevant documents in the knowledge base for this query.",
+                "success": False,
+                "question": question
+            }
+
+        # Get the best matching context
+        retrieved_chunk = rows[0][0]  # content_chunk
+        source_file = rows[0][1]     # source_file
+        
+        # Combine multiple contexts for richer answers
+        all_contexts = "\n\n".join([row[0] for row in rows])
+        
+        print(f"DEBUG: Using context from: {source_file}")
+
+        # Generate answer with Gemini (same logic as your existing endpoint)
+        try:
+            print("DEBUG: Calling Gemini API...")
+            
+            if is_alert:
+                prompt = f"""
+You are an expert DevOps incident response assistant. An alert has fired with the following details:
+
+**Alert Name:** {alert_name}
+**Service:** {service_name}
+**Question:** {question}
+
+Based on the runbook context below, provide a concise, actionable solution:
+
+**Runbook Context:**
+{all_contexts}
+
+Instructions:
+- Provide immediate action steps to resolve this alert
+- Include specific commands or procedures if available in the context
+- Prioritize critical actions first
+- Keep the response focused and actionable for incident response
+"""
+            else:
+                prompt = f"""
+You are a helpful and knowledgeable DevOps assistant. Based on the context provided below, answer the user's question in a clear, practical, and actionable way.
+
+Context from knowledge base:
+{all_contexts}
+
+User Question: {question}
+
+Instructions:
+- Provide a direct, helpful answer based on the context
+- Include specific steps or recommendations when applicable
+- If the context doesn't fully answer the question, mention what information is available
+- Keep the response practical and actionable for DevOps scenarios
+"""
+            
+            response = generation_model.generate_content(prompt)
+            llm_answer = response.text
+            print("DEBUG: Successfully received response from Gemini")
+                    
+        except Exception as e:
+            print(f"DEBUG: Gemini failed: {e}")
+            llm_answer = f"LLM service unavailable. Here's the relevant information from the knowledge base:\n\n{retrieved_chunk}"
+
+        # Return response based on input type
+        if is_alert:
+            # Send to Slack for alerts
+            slack_webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+            if slack_webhook_url:
+                final_message = f"""🚨 **ALERT: {alert_name}** 🚨
+
+📋 **Service:** {service_name}
+📝 **Details:** {question}
+
+🤖 **DevOps Sentinel's Recommended Action:**
+{llm_answer}
+
+📚 **Source:** {source_file}"""
+                
+                try:
+                    requests.post(slack_webhook_url, json={"text": final_message}, timeout=10)
+                    return {"status": "Alert processed and sent to Slack.", "success": True}
+                except:
+                    return {"status": "Alert processed but failed to send to Slack.", "success": False}
+            else:
+                return {"status": "Alert processed but Slack not configured.", "success": False}
+        else:
+            # Return to UI for questions
+            return {
+                "question": question,
+                "answer": llm_answer,
+                "source_context": f"Source: {source_file}\n\nContext: {retrieved_chunk}",
+                "success": True
+            }
+            
+    except Exception as e:
+        print(f"DEBUG: Processing error: {e}")
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
