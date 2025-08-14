@@ -2,11 +2,12 @@
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import os
 from dotenv import load_dotenv
+import os
+import requests
 from sqlalchemy import create_engine, text
-from sentence_transformers import SentenceTransformer
-import google.generativeai as genai  # <-- Import Google's library
+import google.generativeai as genai
+from sentence_transformers import SentenceTransformer  # Make sure this is imported
 import time
 import random
 import requests  # Added for Slack notifications
@@ -44,15 +45,39 @@ ssl_ca_path = os.path.abspath("isrgrootx1.pem")
 connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_ca={ssl_ca_path}"
 engine = create_engine(connection_string)
 
-# Load the embedding model (use same as ingest.py for consistency)
-print("Loading embedding model...")
-sentence_model = SentenceTransformer('all-mpnet-base-v2')  # 768 dimensions to match database
+# --- LAZY MODEL LOADING ---
+print("Initializing application...")
+
+# Don't load the model during startup - load it when needed
+sentence_model = None
+
+def get_sentence_model():
+    """Lazy load the sentence transformer model"""
+    global sentence_model
+    if sentence_model is None:
+        print("Loading embedding model...")
+        try:
+            # Try to load the model
+            sentence_model = SentenceTransformer('all-mpnet-base-v2')
+            print("Embedding model loaded successfully!")
+        except Exception as e:
+            print(f"Failed to load model: {e}")
+            # Try alternative smaller model
+            try:
+                print("Trying smaller model...")
+                sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+                print("Smaller model loaded successfully!")
+            except Exception as e2:
+                print(f"Failed to load smaller model: {e2}")
+                raise Exception("Cannot load any embedding model. Please check your internet connection.")
+    
+    return sentence_model
 
 # Initialize the Gemini model (for generation)
 print("Initializing Gemini model...")
 generation_model = genai.GenerativeModel('gemini-1.5-flash')  # Much higher free tier limits
 
-print("--- Server is ready and models are loaded ---")
+print("--- Server initialization complete (model will load on first request) ---")
 
 
 # --- API DATA MODELS ---
@@ -96,6 +121,16 @@ class AlertRequest(BaseModel):
             }
         }
 
+# --- Global cache for health status ---
+# We store the status outside the function to remember it between calls
+health_cache = {
+    "status": "unhealthy",
+    "database": "unknown", 
+    "gemini": "unknown",
+    "last_check_time": 0  # Store the time of the last check
+}
+CACHE_DURATION_SECONDS = 60  # Check status only once per minute
+
 # --- API ENDPOINTS ---
 @app.get("/")
 def root():
@@ -103,23 +138,61 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint"""
-    try:
-        # Test database connection
-        with engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
+    """
+    Health check endpoint with caching to avoid hitting API rate limits.
+    """
+    current_time = time.time()
+    
+    # Check if the cache is older than our duration (60 seconds)
+    if (current_time - health_cache["last_check_time"]) > CACHE_DURATION_SECONDS:
+        print("DEBUG: Health check cache expired. Performing new health check...")
         
-        # Test Gemini API
-        test_response = generation_model.generate_content("Hello")
-        
-        return {
-            "status": "healthy", 
-            "database": "connected",
-            "gemini": "available"
-        }
-    except Exception as e:
-        print(f"DEBUG: Health check failed: {e}")  # Added debug logging
-        return {"status": "unhealthy", "error": str(e)}
+        try:
+            # Test database connection
+            with engine.connect() as connection:
+                connection.execute(text("SELECT 1"))
+            health_cache["database"] = "connected"
+            
+            # Test Gemini API (only if we haven't hit rate limits recently)
+            try:
+                test_response = generation_model.generate_content("Hello")
+                if test_response.text:
+                    health_cache["gemini"] = "available"
+                else:
+                    health_cache["gemini"] = "error"
+            except Exception as gemini_error:
+                error_msg = str(gemini_error)
+                if "429" in error_msg or "quota" in error_msg.lower():
+                    health_cache["gemini"] = "rate_limited"
+                    print("DEBUG: Gemini rate limited during health check")
+                else:
+                    health_cache["gemini"] = "unavailable"
+                    print(f"DEBUG: Gemini error during health check: {gemini_error}")
+
+            # Set overall status based on components
+            if health_cache["database"] == "connected":
+                if health_cache["gemini"] in ["available", "rate_limited"]:
+                    health_cache["status"] = "healthy"
+                else:
+                    health_cache["status"] = "degraded"  # DB works, AI doesn't
+            else:
+                health_cache["status"] = "unhealthy"
+            
+        except Exception as e:
+            print(f"DEBUG: Health check failed: {e}")
+            health_cache["status"] = "unhealthy"
+            health_cache["database"] = "disconnected"
+            
+        # Update the time of the last check
+        health_cache["last_check_time"] = current_time
+        print(f"DEBUG: Health check completed. Status: {health_cache['status']}")
+    else:
+        # Cache is still fresh, return cached results
+        time_since_check = current_time - health_cache["last_check_time"]
+        print(f"DEBUG: Using cached health status (checked {time_since_check:.1f} seconds ago)")
+
+    # Always return the content of the cache
+    return health_cache
 
 @app.post("/query-agent/", response_model=QueryResponse)
 def query_agent(request: QueryRequest):
@@ -129,7 +202,7 @@ def query_agent(request: QueryRequest):
         print(f"DEBUG: Processing question: {request.question}")  # Added debug logging
         
         # 1. Create embedding for the incoming question
-        query_embedding = sentence_model.encode(request.question).tolist()
+        query_embedding = get_sentence_model().encode(request.question).tolist()
         print(f"DEBUG: Generated embedding with {len(query_embedding)} dimensions")  # Added debug logging
         
         # 2. Convert to proper vector format for TiDB
@@ -276,7 +349,7 @@ async def alert_trigger(request: AlertRequest):
     try:
         # --- 1. Run the RAG Process (Logic from /query-agent/) ---
         question = request.message
-        query_embedding = sentence_model.encode(question).tolist()
+        query_embedding = get_sentence_model().encode(question).tolist()
         print(f"DEBUG: Generated embedding for alert with {len(query_embedding)} dimensions")
         
         # Convert to proper vector format for TiDB
@@ -489,7 +562,7 @@ def grafana_alert(request_data: dict):
         raise HTTPException(status_code=400, detail="Invalid input format. Must be a direct question or a Grafana alert.")
 
     # --- 2. Run the RAG Pipeline (this logic is the same) ---
-    query_embedding = sentence_model.encode(question).tolist()
+    query_embedding = get_sentence_model().encode(question).tolist()
 
     retrieved_chunk = None
     with engine.connect() as connection:
@@ -583,7 +656,8 @@ async def process_input(request_data: dict):
     # Use the same RAG logic from your query-agent endpoint
     try:
         print("DEBUG: Creating embedding for the question...")
-        query_embedding = sentence_model.encode(question).tolist()
+        model = get_sentence_model()
+        query_embedding = model.encode(question).tolist()
         print(f"DEBUG: Generated embedding with {len(query_embedding)} dimensions")
         
         # Convert to proper vector format for TiDB

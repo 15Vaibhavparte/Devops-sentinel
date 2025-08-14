@@ -1,20 +1,24 @@
 services:
   # The FastAPI backend service
   backend:
-    build: .  # Build the image using the Dockerfile in the current directory
-    network_mode: "host"
+    build: .
+    ports:
+      - "8000:8000"
     volumes:
-      - .:/app # Mount the current directory into the container for live code updates
+      - .:/app
     env_file:
-      - .env # Load environment variables from your .env file
-    command: uvicorn main:app --host 127.0.0.1 --port 8000 # The command to start the server
+      - .env
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
 
-  # The Streamlit frontend service
+  # The Streamlit frontend service  
   frontend:
-    build: . # Reuse the same Dockerfile to build this service
-    network_mode: "host"
+    build: .
+    ports:
+      - "8501:8501"
     volumes:
-      - .:/app # Also mount code for live updates
+      - .:/app
     depends_on:
-      - backend # Tell Docker to start the backend before the frontend
-    command: streamlit run ui.py --server.port 8501 --server.address 127.0.0.1
+      - backend
+    environment:
+      - API_BASE_URL=http://backend:8000
+    command: streamlit run ui.py --server.port 8501 --server.address 0.0.0.0

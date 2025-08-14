@@ -4,6 +4,7 @@ import streamlit as st
 import requests
 import json
 import time
+import os
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -39,7 +40,7 @@ st.title("🤖 DevOps Sentinel Agent")
 st.markdown("**Ask a question about a DevOps issue, and the agent will consult its knowledge base to find a solution.**")
 
 # --- API Configuration ---
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 QUERY_ENDPOINT = f"{API_BASE_URL}/process-input/"  # ✅ UPDATED TO NEW UNIFIED ENDPOINT
 HEALTH_ENDPOINT = f"{API_BASE_URL}/health"
 STATS_ENDPOINT = f"{API_BASE_URL}/stats"
