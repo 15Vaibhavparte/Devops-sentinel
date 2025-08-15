@@ -8,7 +8,13 @@ services:
       - .:/app
     env_file:
       - .env
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1
 
   # The Streamlit frontend service  
   frontend:
@@ -21,4 +27,10 @@ services:
       - backend
     environment:
       - API_BASE_URL=http://backend:8000
-    command: streamlit run ui.py --server.port 8501 --server.address 0.0.0.0
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    command: streamlit run ui.py --server.port 8501 --server.address 0.0.0.0 --server.enableCORS false --server.enableXsrfProtection false
