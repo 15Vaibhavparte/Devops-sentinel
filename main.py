@@ -75,9 +75,9 @@ def get_sentence_model():
 
 # Initialize the Gemini model (for generation)
 print("Initializing Gemini model...")
-generation_model = genai.GenerativeModel('gemini-1.5-flash')  # Much higher free tier limits
+generation_model = genai.GenerativeModel('gemini-2.5-flash')  # Much higher free tier limits
 
-print("--- Server initialization complete (model will load on first request) ---")
+print("--- Gemini 2.5 Flash initialized successfully ---")
 
 
 # --- API DATA MODELS ---
@@ -502,7 +502,7 @@ def get_stats():
                 "unique_sources": unique_sources,
                 "embedding_model": "all-mpnet-base-v2",
                 "vector_dimensions": 768,
-                "llm_model": "gemini-1.5-flash"
+                "llm_model": "gemini-2.5-flash"
             }
     except Exception as e:
         print(f"DEBUG: Stats endpoint error: {e}")  # Added debug logging
