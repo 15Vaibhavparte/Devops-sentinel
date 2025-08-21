@@ -21,9 +21,11 @@ app = FastAPI(title="DevOps Sentinel Query Agent", version="1.0.0")
 # --- NEW: Add CORS Middleware ---
 origins = [
     "http://localhost",
-    "http://localhost:8501",  # Streamlit default port
+    "http://localhost:8501",  # Local Streamlit development
     "http://127.0.0.1:8501",  # Alternative localhost format
-    "http://localhost:3000",  # Common frontend port
+    "https://devops-sentinel-7khjtvmu95xk8faeyoer8u.streamlit.app",  # ← Add your Streamlit Cloud URL
+    "https://devops-sentinel-7khjtvmu95xk8faeyoer8u.streamlit.app/",  # With trailing slash
+    "https://*.streamlit.app",  # Allow all Streamlit Cloud apps (optional)
 ]
 
 app.add_middleware(
