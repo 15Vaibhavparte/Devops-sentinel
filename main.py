@@ -1,13 +1,14 @@
 # main.py
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 import requests
 from sqlalchemy import create_engine, text
 import google.generativeai as genai
-from sentence_transformers import SentenceTransformer  # Make sure this is imported
+from sentence_transformers import SentenceTransformer 
 import time
 import random
 import requests  # Added for Slack notifications
@@ -16,6 +17,24 @@ import requests  # Added for Slack notifications
 # Load environment variables and initialize models just once when the app starts
 load_dotenv()
 app = FastAPI(title="DevOps Sentinel Query Agent", version="1.0.0")
+
+# --- NEW: Add CORS Middleware ---
+origins = [
+    "http://localhost",
+    "http://localhost:8501",  # Streamlit default port
+    "http://127.0.0.1:8501",  # Alternative localhost format
+    "http://localhost:3000",  # Common frontend port
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+print("--- CORS middleware configured for Streamlit integration ---")
 
 # --- GEMINI CONFIGURATION ---
 google_api_key = os.getenv("GOOGLE_API_KEY")
