@@ -1,60 +1,43 @@
 # --- STAGE 1: The Builder ---
-# This stage installs dependencies, including a CPU-only version of PyTorch
+# This stage installs all dependencies in a single, optimized step.
 FROM python:3.11-slim as builder
 
 # Set the working directory
 WORKDIR /app
 
-# Install system dependencies needed for building
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install PyTorch for CPU only to save space
-# This is the most important optimization step
-RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-
-# Copy requirements and install the rest of the dependencies
+# Copy requirements file first to leverage Docker layer caching.
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the sentence transformer model to cache it
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-mpnet-base-v2')" || echo "Model download failed, will download at runtime"
+# Install all dependencies from requirements.txt in a single RUN command.
+# This allows pip to resolve all versions correctly and creates a single layer.
+# The CPU-only PyTorch index is used for all packages to ensure the correct versions are found.
+# NOTE: Ensure 'torch', 'torchvision', and 'torchaudio' are listed in your requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --index-url https://download.pytorch.org/whl/cpu
+
 
 # --- STAGE 2: The Final Image ---
-# This stage creates the small, final image for production
+# This stage creates the small, final production image.
 FROM python:3.11-slim
 
 # Set the working directory
 WORKDIR /app
 
-# Install minimal runtime dependencies only
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy the installed Python packages from the 'builder' stage
+# Copy only the installed Python packages from the 'builder' stage.
+# This is much smaller than the entire builder image.
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy the cached model from builder stage
-COPY --from=builder /root/.cache /root/.cache
-
-# Copy your application code
+# Copy your application code into the final image.
 COPY . .
 
-# Create a non-root user for security
-RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
+# Create a non-root user for better security.
+RUN useradd --create-home app
 USER app
 
-# Expose the necessary ports
+# Expose the necessary ports for your application.
 EXPOSE 8000
 EXPOSE 8501
 
-# Health check for the backend
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# The command to run the app will be in docker-compose.yml or Railway's start command
+# The command to run your app.
+# Railway.app will likely override this with its own start command, but it's good practice.
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
