@@ -1,25 +1,27 @@
-# Dockerfile.railway - Railway-optimized Dockerfile
+# Dockerfile.railway - Minimal, reliable version
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+# Install minimal system dependencies
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch CPU-only
-RUN pip install --no-cache-dir \
-    torch==2.1.0+cpu \
-    torchvision==0.16.0+cpu \
-    torchaudio==2.1.0+cpu \
-    --index-url https://download.pytorch.org/whl/cpu
+# Upgrade pip
+RUN pip install --upgrade pip
 
-# Copy and install requirements
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install only essential packages one by one
+RUN pip install --no-cache-dir fastapi==0.104.1
+RUN pip install --no-cache-dir uvicorn[standard]==0.24.0
+RUN pip install --no-cache-dir pydantic==2.5.0
+RUN pip install --no-cache-dir python-dotenv==1.0.0
+RUN pip install --no-cache-dir sqlalchemy==2.0.23
+RUN pip install --no-cache-dir pymysql==1.1.0
+RUN pip install --no-cache-dir google-generativeai==0.3.2
+RUN pip install --no-cache-dir requests==2.31.0
+RUN pip install --no-cache-dir streamlit==1.28.1
+
+# Install sentence transformers last (most problematic)
+RUN pip install --no-cache-dir sentence-transformers==2.2.2
 
 # Copy application code
 COPY . .
@@ -28,12 +30,6 @@ COPY . .
 RUN useradd --create-home app && chown -R app:app /app
 USER app
 
-# Expose port (Railway will set PORT environment variable)
 EXPOSE $PORT
 
-# Health check for Railway
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:$PORT/health || exit 1
-
-# Railway startup command
 CMD python -c "import os; os.system(f'uvicorn main:app --host 0.0.0.0 --port {os.environ.get(\"PORT\", \"8000\")}')"
