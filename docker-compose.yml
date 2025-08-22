@@ -5,11 +5,11 @@ services:
   backend:
     build: 
       context: .
-      target: ""  # Uses the final stage by default
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - .:/app  # Remove this in production for security
+      - ./certs:/app/certs:ro  # ← Optional: mount certs folder
     env_file:
       - .env
     environment:

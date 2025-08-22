@@ -99,9 +99,11 @@ except (ValueError, TypeError):
 
 # Database connection with correct SSL path for Windows
 DB_NAME = "devops_sentinel"
-ssl_ca_path = os.path.abspath("isrgrootx1.pem")
+ssl_ca_path = "/app/certs/isrgrootx1.pem"  # Fixed Docker path
 connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_ca={ssl_ca_path}"
 engine = create_engine(connection_string)
+
+print(f"✅ Using SSL certificate: {ssl_ca_path}")
 
 # --- LAZY MODEL LOADING ---
 print("Initializing application...")

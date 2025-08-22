@@ -30,6 +30,10 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy your application code into the final image.
 COPY . .
 
+# Create certs directory and copy SSL certificate
+RUN mkdir -p /app/certs
+COPY certs/isrgrootx1.pem /app/certs/
+
 # Create a non-root user for better security.
 RUN useradd --create-home app
 USER app
