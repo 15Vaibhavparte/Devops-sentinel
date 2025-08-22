@@ -1,30 +1,20 @@
-# railway_start.py - Python startup script for Railway
+# railway_start.py - Reliable Railway startup
 import os
 import subprocess
 import sys
+import time
 
-def start_server():
-    """Start the uvicorn server with proper port handling"""
+def main():
+    print("=== Railway DevOps Sentinel Startup ===")
     
-    # Get port from environment
+    # Get port from Railway
     port = os.environ.get('PORT', '8000')
+    print(f"Starting on port: {port}")
     
-    print("=== DevOps Sentinel Railway Startup ===")
-    print(f"PORT environment variable: {port}")
-    print(f"Python version: {sys.version}")
-    print(f"Working directory: {os.getcwd()}")
-    
-    # Validate port
-    try:
-        port_int = int(port)
-        if port_int < 1 or port_int > 65535:
-            raise ValueError(f"Invalid port number: {port_int}")
-    except ValueError as e:
-        print(f"ERROR: Invalid port value '{port}': {e}")
-        print("Using default port 8000")
-        port = "8000"
-    
-    print(f"Starting uvicorn server on port {port}")
+    # Environment debug
+    print(f"RAILWAY_ENVIRONMENT: {os.getenv('RAILWAY_ENVIRONMENT')}")
+    print(f"DATABASE_URL configured: {'Yes' if os.getenv('DATABASE_URL') else 'No'}")
+    print(f"GOOGLE_API_KEY configured: {'Yes' if os.getenv('GOOGLE_API_KEY') else 'No'}")
     
     # Start uvicorn
     cmd = [
@@ -32,19 +22,20 @@ def start_server():
         'main:app', 
         '--host', '0.0.0.0', 
         '--port', port,
-        '--workers', '1'
+        '--workers', '1',
+        '--log-level', 'info'
     ]
     
     print(f"Command: {' '.join(cmd)}")
     
     try:
         subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"ERROR: Server failed to start: {e}")
-        sys.exit(1)
     except KeyboardInterrupt:
-        print("Server stopped by user")
+        print("Shutting down...")
         sys.exit(0)
+    except Exception as e:
+        print(f"Startup failed: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    start_server()
+    main()

@@ -97,10 +97,25 @@ try:
 except (ValueError, TypeError):
     raise ValueError(f"TIDB_PORT must be a valid integer, got: {tidb_port}")
 
-# Database connection with correct SSL path for Windows
+# Database connection for Railway (no SSL certificate file)
 DB_NAME = "devops_sentinel"
-ssl_ca_path = "/app/certs/isrgrootx1.pem"  # Fixed Docker path
-connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_ca={ssl_ca_path}"
+
+# Get database URL from environment
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    connection_string = database_url
+    print(f"✅ Using DATABASE_URL from environment")
+else:
+    # Fallback to individual components
+    tidb_host = os.getenv("TIDB_HOST")
+    tidb_port = os.getenv("TIDB_PORT", "4000")
+    tidb_user = os.getenv("TIDB_USER")
+    tidb_password = os.getenv("TIDB_PASSWORD")
+    
+    # Railway - no SSL certificate file
+    connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_disabled=false"
+    print(f"✅ Using individual database components")
+
 engine = create_engine(connection_string)
 
 print(f"✅ Using SSL certificate: {ssl_ca_path}")
@@ -197,62 +212,34 @@ def root():
     return {"message": "DevOps Sentinel Query Agent with Gemini AI is running!"}
 
 @app.get("/health")
-def health_check():
-    """
-    Health check endpoint with caching to avoid hitting API rate limits.
-    """
-    current_time = time.time()
-    
-    # Check if the cache is older than our duration (60 seconds)
-    if (current_time - health_cache["last_check_time"]) > CACHE_DURATION_SECONDS:
-        print("DEBUG: Health check cache expired. Performing new health check...")
+async def health_check():
+    """Railway-compatible health check"""
+    try:
+        health_status = {
+            "status": "healthy",
+            "timestamp": time.time(),
+            "environment": "railway"
+        }
         
+        # Test database connection
         try:
-            # Test database connection
-            with engine.connect() as connection:
-                connection.execute(text("SELECT 1"))
-            health_cache["database"] = "connected"
-            
-            # Test Gemini API (only if we haven't hit rate limits recently)
-            try:
-                test_response = generation_model.generate_content("Hello")
-                if test_response.text:
-                    health_cache["gemini"] = "available"
-                else:
-                    health_cache["gemini"] = "error"
-            except Exception as gemini_error:
-                error_msg = str(gemini_error)
-                if "429" in error_msg or "quota" in error_msg.lower():
-                    health_cache["gemini"] = "rate_limited"
-                    print("DEBUG: Gemini rate limited during health check")
-                else:
-                    health_cache["gemini"] = "unavailable"
-                    print(f"DEBUG: Gemini error during health check: {gemini_error}")
-
-            # Set overall status based on components
-            if health_cache["database"] == "connected":
-                if health_cache["gemini"] in ["available", "rate_limited"]:
-                    health_cache["status"] = "healthy"
-                else:
-                    health_cache["status"] = "degraded"  # DB works, AI doesn't
+            if engine:
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                health_status["database"] = "connected"
             else:
-                health_cache["status"] = "unhealthy"
-            
-        except Exception as e:
-            print(f"DEBUG: Health check failed: {e}")
-            health_cache["status"] = "unhealthy"
-            health_cache["database"] = "disconnected"
-            
-        # Update the time of the last check
-        health_cache["last_check_time"] = current_time
-        print(f"DEBUG: Health check completed. Status: {health_cache['status']}")
-    else:
-        # Cache is still fresh, return cached results
-        time_since_check = current_time - health_cache["last_check_time"]
-        print(f"DEBUG: Using cached health status (checked {time_since_check:.1f} seconds ago)")
-
-    # Always return the content of the cache
-    return health_cache
+                health_status["database"] = "not_configured"
+        except Exception as db_error:
+            health_status["database"] = f"error: {str(db_error)[:100]}"
+        
+        # Test Gemini API
+        google_api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        health_status["gemini"] = "configured" if google_api_key else "not_configured"
+        
+        return health_status
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 @app.post("/query-agent/", response_model=QueryResponse)
 def query_agent(request: QueryRequest):
