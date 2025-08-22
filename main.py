@@ -1,10 +1,52 @@
 # main.py
 
+import os
+from dotenv import load_dotenv
+import sys
+
+# --- ENVIRONMENT SETUP ---
+# Load .env file for local development
+load_dotenv()
+
+# Debug environment loading
+print("=== ENVIRONMENT DEBUG ===")
+print(f"Python version: {sys.version}")
+print(f"Current working directory: {os.getcwd()}")
+print(f"Environment check:")
+
+# Check for API key with multiple possible names
+api_key_names = ["GOOGLE_API_KEY", "GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"]
+google_api_key = None
+
+for key_name in api_key_names:
+    value = os.getenv(key_name)
+    if value:
+        google_api_key = value
+        print(f"✅ Found API key in: {key_name}")
+        break
+    else:
+        print(f"❌ Not found: {key_name}")
+
+if not google_api_key:
+    print("❌ CRITICAL ERROR: No Google API key found!")
+    print("Available environment variables:")
+    for key in sorted(os.environ.keys()):
+        if any(term in key.upper() for term in ['API', 'KEY', 'GOOGLE', 'GEMINI']):
+            value = os.environ[key]
+            masked = f"{value[:5]}...{value[-4:]}" if len(value) > 10 else "***"
+            print(f"  {key}: {masked}")
+    
+    raise ValueError(
+        f"Google API key not found! Please set one of: {', '.join(api_key_names)}. "
+        f"Check your Railway environment variables."
+    )
+
+print(f"✅ Using API key: {google_api_key[:10]}...{google_api_key[-4:]}")
+print("=== END ENVIRONMENT DEBUG ===")
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from dotenv import load_dotenv
-import os
 import requests
 from sqlalchemy import create_engine, text
 import google.generativeai as genai
@@ -14,8 +56,6 @@ import random
 import requests  # Added for Slack notifications
 
 # --- INITIALIZATION ---
-# Load environment variables and initialize models just once when the app starts
-load_dotenv()
 app = FastAPI(title="DevOps Sentinel Query Agent", version="1.0.0")
 
 # --- NEW: Add CORS Middleware ---
@@ -39,9 +79,6 @@ app.add_middleware(
 print("--- CORS middleware configured for Streamlit integration ---")
 
 # --- GEMINI CONFIGURATION ---
-google_api_key = os.getenv("GOOGLE_API_KEY")
-if not google_api_key:
-    raise ValueError("GOOGLE_API_KEY environment variable is required!")
 genai.configure(api_key=google_api_key)
 # --- END GEMINI CONFIGURATION ---
 
