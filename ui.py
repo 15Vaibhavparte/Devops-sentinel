@@ -40,7 +40,7 @@ st.title("🤖 DevOps Sentinel Agent")
 st.markdown("**Ask a question about a DevOps issue, and the agent will consult its knowledge base to find a solution.**")
 
 # --- API Configuration ---
-API_BASE_URL = os.getenv("API_BASE_URL", "devops-sentinel-production.up.railway.app")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://devops-sentinel-production.up.railway.app")
 QUERY_ENDPOINT = f"{API_BASE_URL}/process-input/"  # ✅ UPDATED TO NEW UNIFIED ENDPOINT
 HEALTH_ENDPOINT = f"{API_BASE_URL}/health"
 STATS_ENDPOINT = f"{API_BASE_URL}/stats"
