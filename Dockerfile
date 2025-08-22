@@ -12,7 +12,7 @@ COPY requirements.txt .
 # This allows pip to resolve all versions correctly and creates a single layer.
 # The CPU-only PyTorch index is used for all packages to ensure the correct versions are found.
 # NOTE: Ensure 'torch', 'torchvision', and 'torchaudio' are listed in your requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
 
 # --- STAGE 2: The Final Image ---
