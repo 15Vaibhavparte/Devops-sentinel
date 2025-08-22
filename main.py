@@ -97,28 +97,69 @@ try:
 except (ValueError, TypeError):
     raise ValueError(f"TIDB_PORT must be a valid integer, got: {tidb_port}")
 
-# Database connection for Railway (no SSL certificate file)
+# Database connection for Railway (replace the problematic section)
 DB_NAME = "devops_sentinel"
 
 # Get database URL from environment
 database_url = os.getenv("DATABASE_URL")
+
 if database_url:
+    # Use the full DATABASE_URL (Railway style)
     connection_string = database_url
     print(f"✅ Using DATABASE_URL from environment")
+    print(f"✅ Database connection configured (Railway mode)")
 else:
-    # Fallback to individual components
+    # Fallback to individual components (local development)
     tidb_host = os.getenv("TIDB_HOST")
     tidb_port = os.getenv("TIDB_PORT", "4000")
     tidb_user = os.getenv("TIDB_USER")
     tidb_password = os.getenv("TIDB_PASSWORD")
     
-    # Railway - no SSL certificate file
-    connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_disabled=false"
-    print(f"✅ Using individual database components")
+    if all([tidb_host, tidb_user, tidb_password]):
+        # Check if running on Railway (no SSL certificate file)
+        is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None
+        
+        if is_railway:
+            # Railway deployment - no SSL certificate file
+            connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_disabled=false"
+            print(f"✅ Railway mode: Database connection without SSL certificate file")
+        else:
+            # Local development - try to use SSL certificate
+            ssl_ca_path = "./certs/isrgrootx1.pem"
+            if os.path.exists(ssl_ca_path):
+                connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_ca={ssl_ca_path}"
+                print(f"✅ Local mode: Using SSL certificate: {ssl_ca_path}")
+            else:
+                connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_disabled=false"
+                print(f"✅ Local mode: SSL certificate not found, using connection without SSL file")
+    else:
+        print("❌ Database configuration incomplete!")
+        connection_string = None
 
-engine = create_engine(connection_string)
+# Create database engine
+try:
+    if connection_string:
+        engine = create_engine(
+            connection_string,
+            pool_timeout=30,
+            pool_recycle=3600,
+            pool_pre_ping=True  # Helps with connection issues
+        )
+        print("✅ Database engine created successfully")
+        
+        # Test connection
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1 as test"))
+            print("✅ Database connection test successful")
+    else:
+        engine = None
+        print("❌ No database engine created")
+        
+except Exception as e:
+    print(f"❌ Database setup error: {e}")
+    engine = None
 
-print(f"✅ Using SSL certificate: {ssl_ca_path}")
+print("=== END DATABASE CONFIGURATION ===")
 
 # --- LAZY MODEL LOADING ---
 print("Initializing application...")
