@@ -82,20 +82,20 @@ print("--- CORS middleware configured for Streamlit integration ---")
 genai.configure(api_key=google_api_key)
 # --- END GEMINI CONFIGURATION ---
 
-# Validate database environment variables
-tidb_host = os.getenv("TIDB_HOST")
-tidb_port = os.getenv("TIDB_PORT")
-tidb_user = os.getenv("TIDB_USER")
-tidb_password = os.getenv("TIDB_PASSWORD")
+# # Validate database environment variables
+# tidb_host = os.getenv("TIDB_HOST")
+# tidb_port = os.getenv("TIDB_PORT")
+# tidb_user = os.getenv("TIDB_USER")
+# tidb_password = os.getenv("TIDB_PASSWORD")
 
-if not all([tidb_host, tidb_port, tidb_user, tidb_password]):
-    raise ValueError("Missing required TiDB environment variables!")
+# if not all([tidb_host, tidb_port, tidb_user, tidb_password]):
+#     raise ValueError("Missing required TiDB environment variables!")
 
-# Convert port to integer
-try:
-    tidb_port = int(tidb_port)
-except (ValueError, TypeError):
-    raise ValueError(f"TIDB_PORT must be a valid integer, got: {tidb_port}")
+# # Convert port to integer
+# try:
+#     tidb_port = int(tidb_port)
+# except (ValueError, TypeError):
+#     raise ValueError(f"TIDB_PORT must be a valid integer, got: {tidb_port}")
 
 # Database connection for Railway (replace the problematic section)
 DB_NAME = "devops_sentinel"
