@@ -43,8 +43,8 @@ def main():
     print(f"Environment PORT: {os.environ.get('PORT', 'Not set')}")
     
     try:
-        # Use main_minimal for now to ensure basic functionality
-        cmd = ['uvicorn', 'main_minimal:app', '--host', '0.0.0.0', '--port', str(port)]
+        # Switch back to full main.py now that env vars are confirmed working
+        cmd = ['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', str(port)]
         print(f"Command: {' '.join(cmd)}")
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
