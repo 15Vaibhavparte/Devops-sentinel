@@ -924,8 +924,26 @@ def create_safe_database_engine():
         print("❌ No DATABASE_URL found")
         return None
     
+    # Fix Railway environment variable issue - remove PREFIX if present
+    if database_url.startswith("DATABASE_URL="):
+        database_url = database_url.replace("DATABASE_URL=", "", 1)
+        print("🔧 Fixed Railway environment variable prefix issue")
+    
+    # Clean any whitespace
+    database_url = database_url.strip()
+    
     try:
-        # Use the DATABASE_URL exactly as provided - don't modify it
+        # Ensure SSL for TiDB Cloud
+        if "tidbcloud.com" in database_url and "ssl_verify_cert=false" in database_url:
+            # Replace with secure SSL settings
+            database_url = database_url.replace("ssl_verify_cert=false&ssl_verify_identity=false", "ssl_verify_cert=true&ssl_verify_identity=false")
+            print("🔒 Updated to secure SSL connection for TiDB Cloud")
+        elif "tidbcloud.com" in database_url and "ssl" not in database_url:
+            # Add SSL parameters if missing
+            separator = "&" if "?" in database_url else "?"
+            database_url += f"{separator}ssl_verify_cert=true&ssl_verify_identity=false"
+            print("🔒 Added SSL parameters for TiDB Cloud")
+        
         print(f"✅ Using DATABASE_URL from environment")
         print(f"   URL (first 50 chars): {database_url[:50]}...")
         
@@ -933,7 +951,7 @@ def create_safe_database_engine():
         from sqlalchemy import create_engine
         
         engine = create_engine(
-            database_url,  # Use exactly as provided
+            database_url,  # Use cleaned URL
             pool_timeout=30,
             pool_recycle=3600,
             pool_pre_ping=True,
@@ -946,17 +964,17 @@ def create_safe_database_engine():
     except Exception as e:
         print(f"❌ Database engine creation failed: {e}")
         
-        # Try with basic fallback
+        # Try with secure fallback
         try:
-            print("🔄 Trying fallback connection...")
-            basic_url = "mysql+pymysql://MXWJujpTmY2R5cp.root:kJXZQBTtUS5mxeTn@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/devops_sentinel"
+            print("🔄 Trying secure fallback connection...")
+            secure_fallback_url = "mysql+pymysql://MXWJujpTmY2R5cp.root:kJXZQBTtUS5mxeTn@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/devops_sentinel?ssl_verify_cert=true&ssl_verify_identity=false"
             
-            fallback_engine = create_engine(basic_url)
-            print("✅ Fallback database engine created")
+            fallback_engine = create_engine(secure_fallback_url)
+            print("✅ Secure fallback database engine created")
             return fallback_engine
             
         except Exception as fallback_error:
-            print(f"❌ Fallback also failed: {fallback_error}")
+            print(f"❌ Secure fallback also failed: {fallback_error}")
             return None
 
 # Create the engine
