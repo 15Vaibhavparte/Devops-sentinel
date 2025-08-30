@@ -6,6 +6,9 @@ WORKDIR /app
 # Install minimal system dependencies
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
+# Copy SSL certificate
+COPY certs/isrgrootx1.pem /app/certs/isrgrootx1.pem
+
 # Upgrade pip
 RUN pip install --upgrade pip
 
