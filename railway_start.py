@@ -38,9 +38,14 @@ def main():
         sys.exit(1)
     
     # Railway sets PORT automatically, but let's be explicit
-    port = os.environ.get('PORT', '8000')
+    # Railway often expects port 8080 or sets PORT env var
+    port = os.environ.get('PORT', '8080')  # Default to 8080 for Railway
     print(f"🚀 Starting DevOps Sentinel on port {port}")
     print(f"Environment PORT: {os.environ.get('PORT', 'Not set')}")
+    print(f"Railway-related env vars:")
+    for key, value in os.environ.items():
+        if 'RAILWAY' in key.upper() or 'PORT' in key.upper():
+            print(f"  {key}: {value}")
     
     try:
         # Switch back to full main.py now that env vars are confirmed working
