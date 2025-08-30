@@ -911,6 +911,104 @@ def create_tidb_engine_with_ca(connection_string):
         print(f"❌ Engine creation failed: {e}")
         return None
 
-# Use this in your database configuration:
-if connection_string:
-    engine = create_tidb_engine_with_ca(connection_string)
+# Replace your database configuration section with this:
+
+print("=== DATABASE CONFIGURATION ===")
+
+def create_safe_database_engine():
+    """Create database engine with safe URL handling"""
+    
+    database_url = os.getenv("DATABASE_URL")
+    
+    if not database_url:
+        print("❌ No DATABASE_URL found")
+        return None
+    
+    try:
+        # Use the DATABASE_URL exactly as provided - don't modify it
+        print(f"✅ Using DATABASE_URL from environment")
+        print(f"   URL (first 50 chars): {database_url[:50]}...")
+        
+        # Create engine without modifying the URL
+        from sqlalchemy import create_engine
+        
+        engine = create_engine(
+            database_url,  # Use exactly as provided
+            pool_timeout=30,
+            pool_recycle=3600,
+            pool_pre_ping=True,
+            echo=False  # Set to True for SQL debugging
+        )
+        
+        print("✅ Database engine created successfully")
+        return engine
+        
+    except Exception as e:
+        print(f"❌ Database engine creation failed: {e}")
+        
+        # Try with basic fallback
+        try:
+            print("🔄 Trying fallback connection...")
+            basic_url = "mysql+pymysql://MXWJujpTmY2R5cp.root:kJXZQBTtUS5mxeTn@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/devops_sentinel"
+            
+            fallback_engine = create_engine(basic_url)
+            print("✅ Fallback database engine created")
+            return fallback_engine
+            
+        except Exception as fallback_error:
+            print(f"❌ Fallback also failed: {fallback_error}")
+            return None
+
+# Create the engine
+engine = create_safe_database_engine()
+
+if engine:
+    try:
+        # Test connection
+        print("🔍 Testing database connection...")
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            result = conn.execute(text("SELECT 1 as test"))
+            print("✅ Database connection test successful")
+    except Exception as e:
+        print(f"❌ Connection test failed: {e}")
+        
+print("=== END DATABASE CONFIGURATION ===")
+
+# Add this debug function to see the exact URL being processed:
+
+def debug_database_url():
+    """Debug the DATABASE_URL to see what's causing parsing issues"""
+    database_url = os.getenv("DATABASE_URL")
+    
+    print("=== DATABASE_URL DEBUG ===")
+    if database_url:
+        print(f"Raw DATABASE_URL: {database_url}")
+        print(f"URL Length: {len(database_url)}")
+        
+        # Check for problematic characters
+        problematic_chars = ['[', ']', '{', '}', ' ', '\n', '\r']
+        for char in problematic_chars:
+            if char in database_url:
+                print(f"⚠️ Found problematic character: '{char}'")
+        
+        # Try basic URL parsing
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(database_url)
+            print(f"✅ URL parsing successful:")
+            print(f"   Scheme: {parsed.scheme}")
+            print(f"   Username: {parsed.username}")
+            print(f"   Hostname: {parsed.hostname}")
+            print(f"   Port: {parsed.port}")
+            print(f"   Path: {parsed.path}")
+            print(f"   Query: {parsed.query}")
+        except Exception as e:
+            print(f"❌ URL parsing failed: {e}")
+    else:
+        print("❌ No DATABASE_URL found")
+    
+    print("=== END DATABASE_URL DEBUG ===")
+
+# Call this before your database configuration
+debug_database_url()
