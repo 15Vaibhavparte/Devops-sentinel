@@ -37,12 +37,14 @@ def main():
         print("❌ Environment check failed - exiting")
         sys.exit(1)
     
+    # Railway sets PORT automatically, but let's be explicit
     port = os.environ.get('PORT', '8000')
     print(f"🚀 Starting DevOps Sentinel on port {port}")
+    print(f"Environment PORT: {os.environ.get('PORT', 'Not set')}")
     
     try:
-        # Temporarily use minimal version for debugging
-        cmd = ['uvicorn', 'main_minimal:app', '--host', '0.0.0.0', '--port', port, '--log-level', 'info']
+        # Use main_minimal for now to ensure basic functionality
+        cmd = ['uvicorn', 'main_minimal:app', '--host', '0.0.0.0', '--port', str(port)]
         print(f"Command: {' '.join(cmd)}")
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
