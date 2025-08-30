@@ -41,7 +41,8 @@ def main():
     print(f"🚀 Starting DevOps Sentinel on port {port}")
     
     try:
-        cmd = ['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', port, '--log-level', 'info']
+        # Temporarily use minimal version for debugging
+        cmd = ['uvicorn', 'main_minimal:app', '--host', '0.0.0.0', '--port', port, '--log-level', 'info']
         print(f"Command: {' '.join(cmd)}")
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:

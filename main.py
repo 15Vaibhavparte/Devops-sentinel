@@ -36,10 +36,8 @@ if not google_api_key:
             masked = f"{value[:5]}...{value[-4:]}" if len(value) > 10 else "***"
             print(f"  {key}: {masked}")
     
-    raise ValueError(
-        f"Google API key not found! Please set one of: {', '.join(api_key_names)}. "
-        f"Check your Railway environment variables."
-    )
+    print("⚠️ WARNING: Application will start but Google API will not work!")
+    google_api_key = "dummy-key-for-startup"  # Allow startup to continue
 
 print(f"✅ Using API key: {google_api_key[:10]}...{google_api_key[-4:]}")
 print("=== END ENVIRONMENT DEBUG ===")
