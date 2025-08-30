@@ -54,6 +54,8 @@ from sentence_transformers import SentenceTransformer
 import time
 import random
 import requests  # Added for Slack notifications
+import certifi
+import ssl
 
 # --- INITIALIZATION ---
 app = FastAPI(title="DevOps Sentinel Query Agent", version="1.0.0")
@@ -865,3 +867,50 @@ Instructions:
     except Exception as e:
         print(f"DEBUG: Processing error: {e}")
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+
+def create_tidb_engine_with_ca(connection_string):
+    """Create TiDB engine with proper CA certificate verification"""
+    
+    try:
+        if "tidbcloud.com" in connection_string:
+            print("🔍 Setting up TiDB Cloud SSL with system CA bundle...")
+            
+            # Get system CA bundle path
+            ca_bundle_path = certifi.where()
+            print(f"   Using CA bundle: {ca_bundle_path}")
+            
+            # Modify connection string to use system CA bundle
+            if "ssl_ca=" in connection_string:
+                # Replace existing ssl_ca parameter
+                import re
+                connection_string = re.sub(r'ssl_ca=[^&]*', f'ssl_ca={ca_bundle_path}', connection_string)
+            else:
+                # Add CA parameter
+                separator = "&" if "?" in connection_string else "?"
+                connection_string += f"{separator}ssl_ca={ca_bundle_path}&ssl_verify_cert=true&ssl_verify_identity=false"
+            
+            print(f"✅ Updated connection string with system CA bundle")
+        
+        # Create engine with SSL context
+        engine = create_engine(
+            connection_string,
+            pool_timeout=30,
+            pool_recycle=3600,
+            pool_pre_ping=True,
+            connect_args={
+                "ssl_verify_cert": True,
+                "ssl_verify_identity": False,
+                "connect_timeout": 20
+            }
+        )
+        
+        print("✅ TiDB Cloud engine created with CA verification")
+        return engine
+        
+    except Exception as e:
+        print(f"❌ Engine creation failed: {e}")
+        return None
+
+# Use this in your database configuration:
+if connection_string:
+    engine = create_tidb_engine_with_ca(connection_string)

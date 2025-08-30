@@ -6,8 +6,12 @@ WORKDIR /app
 # Install minimal system dependencies
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
+# Download TiDB Cloud CA certificate
+RUN mkdir -p /app/certs
+RUN curl -o /app/certs/isrgrootx1.pem https://letsencrypt.org/certs/isrgrootx1.pem
+
 # Copy SSL certificate
-COPY certs/isrgrootx1.pem /app/certs/isrgrootx1.pem
+# COPY certs/isrgrootx1.pem /app/certs/isrgrootx1.pem
 
 # Upgrade pip
 RUN pip install --upgrade pip
