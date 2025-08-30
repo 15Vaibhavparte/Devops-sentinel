@@ -16,6 +16,13 @@ def check_environment():
     print(f"GOOGLE_API_KEY: {'✅ Present' if google_api_key else '❌ Missing'}")
     print(f"DATABASE_URL: {'✅ Present' if database_url else '❌ Missing'}")
     
+    # Check Railway-specific variables
+    railway_env = os.getenv("RAILWAY_ENVIRONMENT")
+    railway_project = os.getenv("RAILWAY_PROJECT_NAME")
+    
+    print(f"RAILWAY_ENVIRONMENT: {railway_env}")
+    print(f"RAILWAY_PROJECT_NAME: {railway_project}")
+    
     if not google_api_key:
         print("❌ GOOGLE_API_KEY is required!")
         return False
@@ -38,18 +45,13 @@ def main():
         sys.exit(1)
     
     # Railway sets PORT automatically, but let's be explicit
-    # Railway often expects port 8080 or sets PORT env var
     port = os.environ.get('PORT', '8080')  # Default to 8080 for Railway
     print(f"🚀 Starting DevOps Sentinel on port {port}")
     print(f"Environment PORT: {os.environ.get('PORT', 'Not set')}")
-    print(f"Railway-related env vars:")
-    for key, value in os.environ.items():
-        if 'RAILWAY' in key.upper() or 'PORT' in key.upper():
-            print(f"  {key}: {value}")
     
     try:
-        # Switch back to full main.py now that env vars are confirmed working
-        cmd = ['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', str(port)]
+        # Use main.py with explicit port
+        cmd = ['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', str(port), '--log-level', 'info']
         print(f"Command: {' '.join(cmd)}")
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
