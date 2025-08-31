@@ -141,11 +141,14 @@ try:
     if connection_string:
         engine = create_engine(
             connection_string,
+            pool_size=1,          # Reduce pool size to save memory
+            max_overflow=2,       # Limit overflow connections
             pool_timeout=30,
-            pool_recycle=3600,
-            pool_pre_ping=True  # Helps with connection issues
+            pool_recycle=1800,    # Recycle connections more frequently
+            pool_pre_ping=True,   # Helps with connection issues
+            echo=False           # Disable SQL logging to save memory
         )
-        print("✅ Database engine created successfully")
+        print("✅ Database engine created successfully (memory-optimized)")
         
         # Test connection
         with engine.connect() as conn:
@@ -161,33 +164,58 @@ except Exception as e:
 
 print("=== END DATABASE CONFIGURATION ===")
 
-# --- LAZY MODEL LOADING ---
+# --- OPTIMIZED MEMORY-EFFICIENT MODEL LOADING ---
 print("Initializing application...")
 
 # Don't load the model during startup - load it when needed
 sentence_model = None
 
 def get_sentence_model():
-    """Lazy load the sentence transformer model"""
+    """Lazy load the sentence transformer model with memory optimization"""
     global sentence_model
     if sentence_model is None:
-        print("Loading embedding model...")
+        print("Loading lightweight embedding model...")
         try:
-            # Try to load the model
-            sentence_model = SentenceTransformer('all-mpnet-base-v2')
-            print("Embedding model loaded successfully!")
+            # Use the smallest possible model to reduce memory usage
+            import torch
+            # Force CPU usage to reduce memory footprint
+            sentence_model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
+            # Set to eval mode to reduce memory usage
+            sentence_model.eval()
+            print("✅ Lightweight embedding model loaded successfully!")
         except Exception as e:
-            print(f"Failed to load model: {e}")
-            # Try alternative smaller model
+            print(f"❌ Failed to load lightweight model: {e}")
+            # Fallback to even smaller model
             try:
-                print("Trying smaller model...")
-                sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
-                print("Smaller model loaded successfully!")
+                print("🔄 Trying ultra-compact model...")
+                sentence_model = SentenceTransformer('paraphrase-MiniLM-L3-v2', device='cpu')
+                sentence_model.eval()
+                print("✅ Ultra-compact model loaded successfully!")
             except Exception as e2:
-                print(f"Failed to load smaller model: {e2}")
+                print(f"❌ Failed to load ultra-compact model: {e2}")
                 raise Exception("Cannot load any embedding model. Please check your internet connection.")
     
     return sentence_model
+
+def cleanup_model():
+    """Force cleanup of model to free memory"""
+    global sentence_model
+    if sentence_model is not None:
+        try:
+            import torch
+            if hasattr(sentence_model, '_modules'):
+                # Clear model from memory
+                sentence_model = None
+                # Force garbage collection
+                import gc
+                gc.collect()
+                # Clear PyTorch cache if available
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                print("🧹 Model memory cleaned up")
+        except Exception as e:
+            print(f"⚠️ Model cleanup warning: {e}")
+            sentence_model = None
 
 # Initialize the Gemini model (for generation)
 print("Initializing Gemini model...")
@@ -574,7 +602,7 @@ Instructions:
 # --- Additional utility endpoints ---
 @app.get("/stats")
 def get_stats():
-    """Get statistics about the knowledge base"""
+    """Get statistics about the knowledge base and system status"""
     try:
         with engine.connect() as connection:
             # Get total count
@@ -585,12 +613,26 @@ def get_stats():
             result = connection.execute(text("SELECT COUNT(DISTINCT source_file) as sources FROM knowledgebase"))
             unique_sources = result.fetchone()[0]
             
+            # Get memory usage
+            memory_info = "N/A"
+            try:
+                import psutil
+                process = psutil.Process()
+                memory_mb = process.memory_info().rss / 1024 / 1024
+                memory_info = f"{memory_mb:.1f} MB"
+            except ImportError:
+                memory_info = "psutil not available"
+            except Exception as e:
+                memory_info = f"Error: {e}"
+            
             return {
                 "total_chunks": total_chunks,
                 "unique_sources": unique_sources,
-                "embedding_model": "all-mpnet-base-v2",
-                "vector_dimensions": 768,
-                "llm_model": "gemini-2.5-flash"
+                "embedding_model": "all-MiniLM-L6-v2 (memory-optimized)",
+                "vector_dimensions": 384,  # Updated for the smaller model
+                "llm_model": "gemini-2.5-flash",
+                "memory_usage": memory_info,
+                "model_loaded": sentence_model is not None
             }
     except Exception as e:
         print(f"DEBUG: Stats endpoint error: {e}")  # Added debug logging
@@ -848,22 +890,38 @@ Instructions:
                 
                 try:
                     requests.post(slack_webhook_url, json={"text": final_message}, timeout=10)
-                    return {"status": "Alert processed and sent to Slack.", "success": True}
+                    result = {"status": "Alert processed and sent to Slack.", "success": True}
                 except:
-                    return {"status": "Alert processed but failed to send to Slack.", "success": False}
+                    result = {"status": "Alert processed but failed to send to Slack.", "success": False}
             else:
-                return {"status": "Alert processed but Slack not configured.", "success": False}
+                result = {"status": "Alert processed but Slack not configured.", "success": False}
         else:
             # Return to UI for questions
-            return {
+            result = {
                 "question": question,
                 "answer": llm_answer,
                 "source_context": f"Source: {source_file}\n\nContext: {retrieved_chunk}",
                 "success": True
             }
+        
+        # 🧹 MEMORY CLEANUP: Force cleanup after processing to prevent OOM
+        try:
+            import gc
+            gc.collect()  # Force garbage collection
+            print("🧹 Memory cleanup completed")
+        except Exception as cleanup_error:
+            print(f"⚠️ Memory cleanup warning: {cleanup_error}")
+        
+        return result
             
     except Exception as e:
         print(f"DEBUG: Processing error: {e}")
+        # Cleanup on error too
+        try:
+            import gc
+            gc.collect()
+        except:
+            pass
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 def create_tidb_engine_with_ca(connection_string):
