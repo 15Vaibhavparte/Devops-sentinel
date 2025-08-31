@@ -206,7 +206,7 @@ if st.button("🤖 Ask the Sentinel", type="primary", use_container_width=True):
                 response = requests.post(
                     QUERY_ENDPOINT, 
                     json=payload, 
-                    timeout=30,  # 30 second timeout
+                    timeout=60,  # Increase timeout to 60 seconds
                     headers={"Content-Type": "application/json"}
                 )
                 
@@ -217,6 +217,47 @@ if st.button("🤖 Ask the Sentinel", type="primary", use_container_width=True):
                     # Check if the query was successful
                     if data.get("success", False):
                         st.success("✅ Answer Found!")
+                        
+                        # Display the response
+                        st.markdown("### 🤖 DevOps Sentinel Response:")
+                        st.markdown(data.get("answer", "No answer provided"))
+                        
+                        # Show source context if available
+                        source = data.get("source_context", "")
+                        if source:
+                            with st.expander("📚 Source Information"):
+                                st.text(source)
+                    else:
+                        st.error("❌ Query failed - no successful response from agent")
+                        
+                elif response.status_code == 400:
+                    st.error("❌ Bad Request - Please check your question format")
+                    st.error(f"Error details: {response.text}")
+                    
+                elif response.status_code == 502:
+                    st.error("🔧 Backend temporarily unavailable. Please try again in a moment.")
+                    
+                elif response.status_code == 504:
+                    st.error("⏱️ Request timed out. Please try a shorter question.")
+                    
+                else:
+                    st.error(f"❌ Server Error: {response.status_code}")
+                    st.error(f"Response: {response.text}")
+                
+            except requests.exceptions.Timeout:
+                st.error("⏱️ Request timed out after 60 seconds. The AI is working hard on your question!")
+                st.info("💡 Try asking a more specific or shorter question.")
+                
+            except requests.exceptions.ConnectionError:
+                st.error("🔌 Connection error. Please check if the backend is running.")
+                st.info("💡 Try refreshing the page or try again in a few moments.")
+                
+            except Exception as e:
+                st.error(f"❌ Unexpected error: {str(e)}")
+                st.info("💡 Please try again or contact support.")
+
+    else:
+        st.warning("⚠️ Please enter a question before submitting.")
                         
                         # Get the answer from the API response
                         llm_answer = data.get("answer", "No answer provided.")
