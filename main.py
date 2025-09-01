@@ -321,6 +321,11 @@ def query_agent(request: QueryRequest):
         query_embedding = get_sentence_model().encode(request.question).tolist()
         print(f"DEBUG: Generated embedding with {len(query_embedding)} dimensions")  # Added debug logging
         
+        # 🔧 DIMENSION COMPATIBILITY FIX
+        if len(query_embedding) == 384:
+            query_embedding.extend([0.0] * (768 - 384))
+            print(f"DEBUG: Padded embedding to {len(query_embedding)} dimensions")
+        
         # 2. Convert to proper vector format for TiDB
         query_vector = f"[{','.join(map(str, query_embedding))}]"
         
@@ -467,6 +472,11 @@ async def alert_trigger(request: AlertRequest):
         question = request.message
         query_embedding = get_sentence_model().encode(question).tolist()
         print(f"DEBUG: Generated embedding for alert with {len(query_embedding)} dimensions")
+        
+        # 🔧 DIMENSION COMPATIBILITY FIX
+        if len(query_embedding) == 384:
+            query_embedding.extend([0.0] * (768 - 384))
+            print(f"DEBUG: Padded alert embedding to {len(query_embedding)} dimensions")
         
         # Convert to proper vector format for TiDB
         query_vector = f"[{','.join(map(str, query_embedding))}]"
@@ -628,8 +638,8 @@ def get_stats():
             return {
                 "total_chunks": total_chunks,
                 "unique_sources": unique_sources,
-                "embedding_model": "all-MiniLM-L6-v2 (memory-optimized)",
-                "vector_dimensions": 384,  # Updated for the smaller model
+                "embedding_model": "all-MiniLM-L6-v2 (memory-optimized, padded to 768)",
+                "vector_dimensions": "384→768 (compatibility mode)",  # Updated for clarity
                 "llm_model": "gemini-2.5-flash",
                 "memory_usage": memory_info,
                 "model_loaded": sentence_model is not None
@@ -693,6 +703,12 @@ def grafana_alert(request_data: dict):
 
     # --- 2. Run the RAG Pipeline (this logic is the same) ---
     query_embedding = get_sentence_model().encode(question).tolist()
+    print(f"DEBUG: Generated grafana embedding with {len(query_embedding)} dimensions")
+    
+    # 🔧 DIMENSION COMPATIBILITY FIX
+    if len(query_embedding) == 384:
+        query_embedding.extend([0.0] * (768 - 384))
+        print(f"DEBUG: Padded grafana embedding to {len(query_embedding)} dimensions")
 
     retrieved_chunk = None
     with engine.connect() as connection:
@@ -789,6 +805,13 @@ async def process_input(request_data: dict):
         model = get_sentence_model()
         query_embedding = model.encode(question).tolist()
         print(f"DEBUG: Generated embedding with {len(query_embedding)} dimensions")
+        
+        # 🔧 DIMENSION COMPATIBILITY FIX
+        # Pad 384-dim vectors to 768-dim to match existing database vectors
+        if len(query_embedding) == 384:
+            # Pad with zeros to match 768 dimensions
+            query_embedding.extend([0.0] * (768 - 384))
+            print(f"DEBUG: Padded embedding to {len(query_embedding)} dimensions for database compatibility")
         
         # Convert to proper vector format for TiDB
         query_vector = f"[{','.join(map(str, query_embedding))}]"
