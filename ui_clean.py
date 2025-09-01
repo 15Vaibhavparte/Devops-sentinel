@@ -83,6 +83,49 @@ with st.sidebar:
         "This UI demonstrates the 'DevOps Sentinel', an AI agent for a TiDB Hackathon project. "
         "It uses a RAG pipeline with TiDB Cloud for vector search and Google's Gemini for answer generation."
     )
+    
+    # Tech Stack Section
+    st.header("🛠️ Tech Stack")
+    st.markdown("""
+    **Backend:**
+    - 🚀 **FastAPI** - REST API framework
+    - 🗄️ **TiDB Cloud** - Vector database
+    - 🤖 **Google Gemini** - LLM for responses
+    - 🔍 **SentenceTransformers** - Embeddings
+    - 📊 **SQLAlchemy** - Database ORM
+    
+    **Frontend:**
+    - 🎨 **Streamlit** - Interactive UI
+    - 💬 **Slack Integration** - Notifications
+    
+    **Deployment:**
+    - ☁️ **Railway.app** - Backend hosting
+    - 🌐 **Streamlit Cloud** - Frontend hosting
+    - 🐳 **Docker** - Containerization
+    
+    **Agent Features:**
+    - 🤖 **Autonomous Monitoring**
+    - 🧠 **Pattern Learning**
+    - 📈 **Predictive Analysis**
+    - ⚡ **Auto-remediation**
+    """)
+    
+    # System Architecture
+    with st.expander("🏗️ Architecture Overview"):
+        st.markdown("""
+        ```
+        Grafana → FastAPI → TiDB → Gemini → Slack
+           ↓         ↓        ↓       ↓        ↓
+        Alerts → Processing → RAG → AI → Notifications
+        ```
+        
+        **Data Flow:**
+        1. 📊 Grafana sends alerts
+        2. 🤖 Agent processes with RAG
+        3. 🧠 Gemini generates solutions  
+        4. 📤 Slack receives notifications
+        5. 🔄 Agent learns patterns
+        """)
 
 # --- Main Interface ---
 col1, col2 = st.columns([2, 1])
@@ -250,21 +293,29 @@ def render_agent_controls():
             
             if st.sidebar.button("🛑 Stop Agent"):
                 try:
-                    requests.post(f"{API_BASE_URL}/agent/stop-monitoring/", timeout=10)
-                    st.sidebar.success("Agent stopped!")
-                    st.rerun()
-                except:
-                    st.sidebar.error("Failed to stop agent")
+                    stop_response = requests.post(f"{API_BASE_URL}/agent/stop-monitoring/", timeout=10)
+                    if stop_response.status_code == 200:
+                        st.sidebar.success("✅ Agent stopped!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.sidebar.error(f"❌ Failed to stop agent: {stop_response.status_code}")
+                except Exception as e:
+                    st.sidebar.error(f"❌ Failed to stop agent: {str(e)}")
         else:
             st.sidebar.error("🔴 Agent: OFFLINE")
             
             if st.sidebar.button("🚀 Start Agent"):
                 try:
-                    requests.post(f"{API_BASE_URL}/agent/start-monitoring/", timeout=10)
-                    st.sidebar.success("Agent started!")
-                    st.rerun()
-                except:
-                    st.sidebar.error("Failed to start agent")
+                    start_response = requests.post(f"{API_BASE_URL}/agent/start-monitoring/", timeout=10)
+                    if start_response.status_code == 200:
+                        st.sidebar.success("✅ Agent started!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.sidebar.error(f"❌ Failed to start agent: {start_response.status_code}")
+                except Exception as e:
+                    st.sidebar.error(f"❌ Failed to start agent: {str(e)}")
         
         # Show agent stats
         st.sidebar.metric("Autonomous Actions", agent_status.get("total_autonomous_actions", 0))
