@@ -84,48 +84,7 @@ with st.sidebar:
         "It uses a RAG pipeline with TiDB Cloud for vector search and Google's Gemini for answer generation."
     )
     
-    # Tech Stack Section
-    st.header("🛠️ Tech Stack")
-    st.markdown("""
-    **Backend:**
-    - 🚀 **FastAPI** - REST API framework
-    - 🗄️ **TiDB Cloud** - Vector database
-    - 🤖 **Google Gemini** - LLM for responses
-    - 🔍 **SentenceTransformers** - Embeddings
-    - 📊 **SQLAlchemy** - Database ORM
-    
-    **Frontend:**
-    - 🎨 **Streamlit** - Interactive UI
-    - 💬 **Slack Integration** - Notifications
-    
-    **Deployment:**
-    - ☁️ **Railway.app** - Backend hosting
-    - 🌐 **Streamlit Cloud** - Frontend hosting
-    - 🐳 **Docker** - Containerization
-    
-    **Agent Features:**
-    - 🤖 **Autonomous Monitoring**
-    - 🧠 **Pattern Learning**
-    - 📈 **Predictive Analysis**
-    - ⚡ **Auto-remediation**
-    """)
-    
-    # System Architecture
-    with st.expander("🏗️ Architecture Overview"):
-        st.markdown("""
-        ```
-        Grafana → FastAPI → TiDB → Gemini → Slack
-           ↓         ↓        ↓       ↓        ↓
-        Alerts → Processing → RAG → AI → Notifications
-        ```
-        
-        **Data Flow:**
-        1. 📊 Grafana sends alerts
-        2. 🤖 Agent processes with RAG
-        3. 🧠 Gemini generates solutions  
-        4. 📤 Slack receives notifications
-        5. 🔄 Agent learns patterns
-        """)
+
 
 # --- Main Interface ---
 col1, col2 = st.columns([2, 1])
@@ -429,3 +388,37 @@ st.markdown(
     """, 
     unsafe_allow_html=True
 )
+
+# Tech Stack Section
+st.header("🛠️ Tech Stack")
+st.markdown("""
+    **Backend:**
+    - 🚀 **FastAPI** - REST API framework
+    - 🗄️ **TiDB Cloud** - Vector database
+    - 🤖 **Google Gemini** - LLM for responses
+    - 🔍 **SentenceTransformers** - Embeddings
+    - 📊 **SQLAlchemy** - Database ORM
+    
+    **Frontend:**
+    - 🎨 **Streamlit** - Interactive UI
+    - 💬 **Slack Integration** - Notifications
+    
+    **Deployment:**
+    - ☁️ **Railway.app** - Backend hosting
+    - 🌐 **Streamlit Cloud** - Frontend hosting
+    - 🐳 **Docker** - Containerization
+    
+    **Agent Features:**
+    - 🤖 **Autonomous Monitoring**
+    - 🧠 **Pattern Learning**
+    - 📈 **Predictive Analysis**
+    - ⚡ **Auto-remediation**
+    
+    **Data Flow:**
+    1. 📊 Grafana sends alerts
+    2. 🤖 Agent processes with RAG
+    3. 🧠 Gemini generates solutions  
+    4. 📤 Slack receives notifications
+    5. 🔄 Agent learns patterns
+""")
+    
