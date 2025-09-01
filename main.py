@@ -68,7 +68,7 @@ origins = [
     "http://localhost",
     "http://localhost:8501",  # Local Streamlit development
     "http://127.0.0.1:8501",  # Alternative localhost format
-    "https://devops-sentinel-7khjtvmu95xk8faeyoer8u.streamlit.app",  # ← Add your Streamlit Cloud URL
+    "https://devops-sentinel-7khjtvmu95xk8faeyoer8u.streamlit.app",  # ← Streamlit Cloud URL
     "https://devops-sentinel-7khjtvmu95xk8faeyoer8u.streamlit.app/",  # With trailing slash
     "https://*.streamlit.app",  # Allow all Streamlit Cloud apps (optional)
 ]
@@ -85,22 +85,6 @@ print("--- CORS middleware configured for Streamlit integration ---")
 
 # --- GEMINI CONFIGURATION ---
 genai.configure(api_key=google_api_key)
-# --- END GEMINI CONFIGURATION ---
-
-# # Validate database environment variables
-# tidb_host = os.getenv("TIDB_HOST")
-# tidb_port = os.getenv("TIDB_PORT")
-# tidb_user = os.getenv("TIDB_USER")
-# tidb_password = os.getenv("TIDB_PASSWORD")
-
-# if not all([tidb_host, tidb_port, tidb_user, tidb_password]):
-#     raise ValueError("Missing required TiDB environment variables!")
-
-# # Convert port to integer
-# try:
-#     tidb_port = int(tidb_port)
-# except (ValueError, TypeError):
-#     raise ValueError(f"TIDB_PORT must be a valid integer, got: {tidb_port}")
 
 # Database connection for Railway (replace the problematic section)
 DB_NAME = "devops_sentinel"
@@ -109,7 +93,7 @@ DB_NAME = "devops_sentinel"
 database_url = os.getenv("DATABASE_URL")
 
 if database_url:
-    # Use the full DATABASE_URL (Railway style)
+    # full DATABASE_URL (Railway style)
     connection_string = database_url
     print(f"✅ Using DATABASE_URL from environment")
     print(f"✅ Database connection configured (Railway mode)")
@@ -271,7 +255,7 @@ class AlertRequest(BaseModel):
         }
 
 # --- Global cache for health status ---
-# We store the status outside the function to remember it between calls
+# Store the status outside the function to remember it between calls
 health_cache = {
     "status": "unhealthy",
     "database": "unknown", 
@@ -416,7 +400,7 @@ Instructions:
             }
             
         except Exception as e:
-            # --- THIS IS THE KEY CHANGE - DETAILED GEMINI ERROR LOGGING ---
+            # ---- DETAILED GEMINI ERROR LOGGING ---
             print(f"DEBUG: An error occurred with the Gemini API: {e}")
             print(f"DEBUG: Error type: {type(e).__name__}")
             print(f"DEBUG: Error details: {str(e)}")
@@ -478,7 +462,7 @@ async def alert_trigger(request: AlertRequest):
         query_embedding = get_sentence_model().encode(question).tolist()
         print(f"DEBUG: Generated embedding for alert with {len(query_embedding)} dimensions")
         
-        # 🔧 DIMENSION COMPATIBILITY FIX
+        # DIMENSION COMPATIBILITY FIX
         if len(query_embedding) == 384:
             query_embedding.extend([0.0] * (768 - 384))
             print(f"DEBUG: Padded alert embedding to {len(query_embedding)} dimensions")
@@ -681,7 +665,7 @@ def grafana_alert(request_data: dict):
     is_alert = False
     question = ""
 
-    # --- 1. Check the input type and generate a question ---
+    # --- 1.Check the input type and generate a question ---
     if "question" in request_data:
         # It's a direct query from our Streamlit UI
         print("DEBUG: Processing direct question.")
@@ -1146,9 +1130,7 @@ def debug_database_url():
 # Call this before your database configuration
 debug_database_url()
 
-# Add these new agent capabilities to your main.py:
-
-
+# New agent capabilities to main.py:
 
 # --- AGENT STATE MANAGEMENT ---
 class AgentState:
@@ -1464,7 +1446,7 @@ async def agent_process_alert(request_data: dict):
             }
     
     # If no learned pattern, use normal RAG processing
-    # ... (your existing process-input logic here) ...
+    # ... (existing process-input logic here) ...
     
     print(f"🔍 Agent: Processing new alert type: {alert_type}")
     # Continue with normal processing...

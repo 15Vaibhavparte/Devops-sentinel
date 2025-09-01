@@ -83,6 +83,19 @@ with st.sidebar:
         "This UI demonstrates the 'DevOps Sentinel', an AI agent for a TiDB Hackathon project. "
         "It uses a RAG pipeline with TiDB Cloud for vector search and Google's Gemini for answer generation."
     )
+    
+    st.header("🛠️ Tech Stack")
+    st.markdown(
+        """
+        - **UI:** Streamlit
+        - **Backend:** FastAPI (Unified Endpoint)
+        - **Database:** TiDB Cloud (Vector Search)
+        - **LLM:** Google Gemini Flash
+        - **Embeddings:** Sentence-Transformers
+        - **Notifications:** Slack Integration
+        - **Alert Processing:** Grafana Webhooks
+        """
+    )
 
 # --- Main Interface ---
 col1, col2 = st.columns([2, 1])
@@ -96,6 +109,8 @@ with col1:
         "How do I troubleshoot high CPU usage on the database?",
         "What are the steps to resolve memory issues?",
         "How do I handle database lock timeouts?",
+        "How do I resolve disk space issues?",
+        "What should I do when the application is not responding?",
         "Custom question..."
     ]
     
