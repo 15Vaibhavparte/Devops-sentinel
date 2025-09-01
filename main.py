@@ -932,7 +932,38 @@ Instructions:
                 "success": True
             }
         
-        # 🧹 MEMORY CLEANUP: Force cleanup after processing to prevent OOM
+        # � AUTONOMOUS LEARNING: Store alert for pattern analysis
+        if is_alert:
+            # Store alert in agent memory for learning
+            alert_info = {
+                "type": alert_name,
+                "service": service_name,
+                "timestamp": datetime.now().isoformat(),
+                "severity": "medium",  # Could be extracted from Grafana
+                "resolved": True if "success" in result else False,
+                "solution_found": len(rows) > 0,
+                "response_quality": "high" if llm_answer and len(llm_answer) > 100 else "low"
+            }
+            agent_state.alert_history.append(alert_info)
+            
+            # Keep only last 50 alerts for pattern analysis
+            if len(agent_state.alert_history) > 50:
+                agent_state.alert_history = agent_state.alert_history[-50:]
+            
+            # Trigger autonomous learning action
+            autonomous_action("grafana_alert_processed", {
+                "alert_name": alert_name,
+                "service": service_name,
+                "system": "grafana_monitoring",
+                "severity": "info",
+                "solution_provided": len(llm_answer) > 0,
+                "knowledge_base_hit": len(rows) > 0,
+                "timestamp": time.time()
+            })
+            
+            print(f"🧠 Agent learned from alert: {alert_name} for {service_name}")
+        
+        # �🧹 MEMORY CLEANUP: Force cleanup after processing to prevent OOM
         try:
             import gc
             gc.collect()  # Force garbage collection
@@ -1167,86 +1198,147 @@ def run_monitoring_scheduler():
         time.sleep(10)
 
 def autonomous_health_check():
-    """Agent automatically checks system health"""
-    print("🤖 Agent: Performing autonomous health check...")
+    """Agent monitors external DevOps systems for issues"""
+    print("🤖 Agent: Monitoring external DevOps systems...")
     
     try:
-        # Check database health
+        # 1. Check database connectivity (external system)
         with engine.connect() as conn:
             result = conn.execute(text("SELECT COUNT(*) FROM knowledgebase"))
             kb_count = result.fetchone()[0]
         
-        # Check memory usage
-        import psutil
-        memory_percent = psutil.virtual_memory().percent
-        
-        # Agent decision making
-        if memory_percent > 80:
-            autonomous_action("high_memory", {
-                "memory_percent": memory_percent,
-                "action": "memory_cleanup",
-                "timestamp": time.time()
-            })
-        
+        # 2. Monitor knowledge base integrity
         if kb_count == 0:
-            autonomous_action("empty_knowledge_base", {
+            autonomous_action("knowledge_base_empty", {
                 "kb_count": kb_count,
+                "severity": "critical",
+                "system": "knowledge_base",
                 "action": "alert_admin",
                 "timestamp": time.time()
             })
         
+        # 3. Check for recent alert patterns (DevOps monitoring)
+        recent_alerts = agent_state.alert_history[-5:] if len(agent_state.alert_history) >= 5 else []
+        if len(recent_alerts) >= 3:
+            # Check if too many alerts in short time (system instability)
+            recent_times = [alert.get("timestamp") for alert in recent_alerts]
+            if recent_times:
+                time_span = (datetime.fromisoformat(recent_times[-1]) - datetime.fromisoformat(recent_times[0])).total_seconds()
+                if time_span < 300:  # 5 minutes
+                    autonomous_action("alert_storm_detected", {
+                        "alert_count": len(recent_alerts),
+                        "time_span_minutes": time_span / 60,
+                        "severity": "warning",
+                        "system": "monitoring",
+                        "action": "analyze_patterns",
+                        "timestamp": time.time()
+                    })
+        
+        # 4. Check system availability (simulate external monitoring)
+        try:
+            # This simulates checking external systems
+            health_response = requests.get(f"{os.getenv('API_BASE_URL', 'http://localhost:8000')}/health", timeout=5)
+            if health_response.status_code != 200:
+                autonomous_action("api_health_degraded", {
+                    "status_code": health_response.status_code,
+                    "severity": "warning",
+                    "system": "api_gateway",
+                    "action": "monitor_closely",
+                    "timestamp": time.time()
+                })
+        except Exception as health_error:
+            autonomous_action("external_system_unreachable", {
+                "error": str(health_error),
+                "severity": "critical",
+                "system": "external_api",
+                "action": "escalate",
+                "timestamp": time.time()
+            })
+        
         agent_state.last_health_check = datetime.now()
-        print("✅ Agent: Health check completed")
+        print("✅ Agent: DevOps systems monitoring completed")
         
     except Exception as e:
-        print(f"❌ Agent: Health check failed: {e}")
-        autonomous_action("health_check_failed", {
+        print(f"❌ Agent: DevOps monitoring failed: {e}")
+        autonomous_action("monitoring_system_failed", {
             "error": str(e),
-            "action": "escalate",
+            "severity": "critical",
+            "system": "agent_monitoring",
+            "action": "restart_monitoring",
             "timestamp": time.time()
         })
 
 def autonomous_action(issue_type: str, context: dict):
-    """Agent takes autonomous actions based on detected issues"""
+    """Agent takes autonomous actions based on DevOps monitoring"""
     print(f"🚨 Agent: Taking autonomous action for {issue_type}")
     
     action_taken = {
         "issue_type": issue_type,
         "context": context,
         "timestamp": datetime.now().isoformat(),
-        "action_id": f"agent_{int(time.time())}"
+        "action_id": f"agent_{int(time.time())}",
+        "system": context.get("system", "unknown"),
+        "severity": context.get("severity", "medium")
     }
     
-    if issue_type == "high_memory":
-        # Agent automatically cleans up memory
-        try:
-            cleanup_model()
-            import gc
-            gc.collect()
+    try:
+        if issue_type == "knowledge_base_empty":
+            # Critical DevOps issue: Knowledge base unavailable
+            send_agent_notification("🚨 CRITICAL: Knowledge base is empty - DevOps solutions unavailable!")
+            action_taken["result"] = "Success: Critical alert sent to operations team"
             
-            action_taken["result"] = "Memory cleanup performed"
-            print("🧹 Agent: Performed automatic memory cleanup")
+        elif issue_type == "alert_storm_detected":
+            # DevOps pattern: Too many alerts indicate system instability
+            alert_count = context.get("alert_count", 0)
+            time_span = context.get("time_span_minutes", 0)
+            send_agent_notification(f"⚠️ ALERT STORM: {alert_count} alerts in {time_span:.1f} minutes - System instability detected!")
+            action_taken["result"] = f"Success: Alert storm notification sent ({alert_count} alerts)"
             
-            # Send notification
-            send_agent_notification(f"🤖 Agent Action: Performed automatic memory cleanup (was {context['memory_percent']}%)")
+        elif issue_type == "api_health_degraded":
+            # DevOps monitoring: API health issues
+            status_code = context.get("status_code", "unknown")
+            send_agent_notification(f"🔧 API HEALTH: Service returning {status_code} - Monitoring closely")
+            action_taken["result"] = f"Success: API health alert sent (status: {status_code})"
             
-        except Exception as e:
-            action_taken["result"] = f"Cleanup failed: {e}"
-    
-    elif issue_type == "empty_knowledge_base":
-        # Agent alerts administrators
-        send_agent_notification("🚨 Agent Alert: Knowledge base is empty - requires immediate attention")
-        action_taken["result"] = "Admin notification sent"
-    
-    elif issue_type == "health_check_failed":
-        # Agent escalates the issue
-        send_agent_notification(f"🆘 Agent Escalation: System health check failed - {context['error']}")
-        action_taken["result"] = "Issue escalated"
+        elif issue_type == "external_system_unreachable":
+            # Critical DevOps issue: External system down
+            error = context.get("error", "unknown")
+            send_agent_notification(f"🆘 SYSTEM DOWN: External system unreachable - {error}")
+            action_taken["result"] = "Success: System outage escalated to operations"
+            
+        elif issue_type == "monitoring_system_failed":
+            # Meta-monitoring: The monitoring itself failed
+            send_agent_notification("🔴 MONITORING FAILURE: DevOps agent monitoring system failed - Manual intervention required")
+            action_taken["result"] = "Success: Monitoring failure escalated"
+            
+        elif issue_type == "grafana_alert_processed":
+            # Autonomous learning from Grafana alerts
+            alert_name = context.get("alert_name", "unknown")
+            service = context.get("service", "unknown")
+            solution_provided = context.get("solution_provided", False)
+            
+            if solution_provided:
+                action_taken["result"] = f"Success: Learned from {alert_name} alert for {service}"
+                print(f"🧠 Agent: Successfully processed and learned from {alert_name}")
+            else:
+                action_taken["result"] = f"Learning: No solution found for {alert_name} - flagged for knowledge base improvement"
+                send_agent_notification(f"📚 KNOWLEDGE GAP: No solution found for '{alert_name}' on {service} - Consider updating knowledge base")
+            
+        else:
+            # Handle Grafana alerts and other DevOps events
+            send_agent_notification(f"🤖 DevOps Agent: Handled {issue_type} - Context: {context}")
+            action_taken["result"] = f"Success: Processed {issue_type}"
+            
+    except Exception as e:
+        action_taken["result"] = f"Failed: {str(e)}"
+        print(f"❌ Agent action failed: {e}")
     
     # Store action in agent memory
     agent_state.autonomous_actions_taken.append(action_taken)
     
     # Keep only last 100 actions
+    if len(agent_state.autonomous_actions_taken) > 100:
+        agent_state.autonomous_actions_taken = agent_state.autonomous_actions_taken[-100:]
     if len(agent_state.autonomous_actions_taken) > 100:
         agent_state.autonomous_actions_taken = agent_state.autonomous_actions_taken[-100:]
 
