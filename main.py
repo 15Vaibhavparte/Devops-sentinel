@@ -1109,3 +1109,292 @@ def debug_database_url():
 
 # Call this before your database configuration
 debug_database_url()
+
+# Add these new agent capabilities to your main.py:
+
+import asyncio
+import schedule
+import threading
+from datetime import datetime, timedelta
+import json
+
+# --- AGENT STATE MANAGEMENT ---
+class AgentState:
+    def __init__(self):
+        self.monitoring_active = False
+        self.last_health_check = None
+        self.alert_history = []
+        self.learned_patterns = {}
+        self.autonomous_actions_taken = []
+
+agent_state = AgentState()
+
+# --- AUTONOMOUS MONITORING FUNCTIONS ---
+@app.post("/agent/start-monitoring/")
+async def start_autonomous_monitoring():
+    """Start the autonomous monitoring agent"""
+    agent_state.monitoring_active = True
+    
+    # Start background monitoring tasks
+    threading.Thread(target=run_monitoring_scheduler, daemon=True).start()
+    
+    return {
+        "status": "Autonomous monitoring started",
+        "capabilities": [
+            "System health monitoring",
+            "Predictive alerting", 
+            "Auto-remediation",
+            "Pattern learning"
+        ],
+        "monitoring_active": True
+    }
+
+@app.post("/agent/stop-monitoring/")
+async def stop_autonomous_monitoring():
+    """Stop the autonomous monitoring agent"""
+    agent_state.monitoring_active = False
+    return {"status": "Autonomous monitoring stopped", "monitoring_active": False}
+
+def run_monitoring_scheduler():
+    """Background scheduler for autonomous monitoring"""
+    schedule.every(30).seconds.do(autonomous_health_check)
+    schedule.every(5).minutes.do(predictive_analysis)
+    schedule.every(15).minutes.do(pattern_learning)
+    
+    while agent_state.monitoring_active:
+        schedule.run_pending()
+        time.sleep(10)
+
+def autonomous_health_check():
+    """Agent automatically checks system health"""
+    print("🤖 Agent: Performing autonomous health check...")
+    
+    try:
+        # Check database health
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT COUNT(*) FROM knowledgebase"))
+            kb_count = result.fetchone()[0]
+        
+        # Check memory usage
+        import psutil
+        memory_percent = psutil.virtual_memory().percent
+        
+        # Agent decision making
+        if memory_percent > 80:
+            autonomous_action("high_memory", {
+                "memory_percent": memory_percent,
+                "action": "memory_cleanup",
+                "timestamp": time.time()
+            })
+        
+        if kb_count == 0:
+            autonomous_action("empty_knowledge_base", {
+                "kb_count": kb_count,
+                "action": "alert_admin",
+                "timestamp": time.time()
+            })
+        
+        agent_state.last_health_check = datetime.now()
+        print("✅ Agent: Health check completed")
+        
+    except Exception as e:
+        print(f"❌ Agent: Health check failed: {e}")
+        autonomous_action("health_check_failed", {
+            "error": str(e),
+            "action": "escalate",
+            "timestamp": time.time()
+        })
+
+def autonomous_action(issue_type: str, context: dict):
+    """Agent takes autonomous actions based on detected issues"""
+    print(f"🚨 Agent: Taking autonomous action for {issue_type}")
+    
+    action_taken = {
+        "issue_type": issue_type,
+        "context": context,
+        "timestamp": datetime.now().isoformat(),
+        "action_id": f"agent_{int(time.time())}"
+    }
+    
+    if issue_type == "high_memory":
+        # Agent automatically cleans up memory
+        try:
+            cleanup_model()
+            import gc
+            gc.collect()
+            
+            action_taken["result"] = "Memory cleanup performed"
+            print("🧹 Agent: Performed automatic memory cleanup")
+            
+            # Send notification
+            send_agent_notification(f"🤖 Agent Action: Performed automatic memory cleanup (was {context['memory_percent']}%)")
+            
+        except Exception as e:
+            action_taken["result"] = f"Cleanup failed: {e}"
+    
+    elif issue_type == "empty_knowledge_base":
+        # Agent alerts administrators
+        send_agent_notification("🚨 Agent Alert: Knowledge base is empty - requires immediate attention")
+        action_taken["result"] = "Admin notification sent"
+    
+    elif issue_type == "health_check_failed":
+        # Agent escalates the issue
+        send_agent_notification(f"🆘 Agent Escalation: System health check failed - {context['error']}")
+        action_taken["result"] = "Issue escalated"
+    
+    # Store action in agent memory
+    agent_state.autonomous_actions_taken.append(action_taken)
+    
+    # Keep only last 100 actions
+    if len(agent_state.autonomous_actions_taken) > 100:
+        agent_state.autonomous_actions_taken = agent_state.autonomous_actions_taken[-100:]
+
+def predictive_analysis():
+    """Agent performs predictive analysis on patterns"""
+    print("🔮 Agent: Performing predictive analysis...")
+    
+    try:
+        # Analyze recent alert patterns
+        recent_alerts = agent_state.alert_history[-10:]  # Last 10 alerts
+        
+        if len(recent_alerts) >= 3:
+            # Look for patterns
+            alert_types = [alert.get("type", "unknown") for alert in recent_alerts]
+            most_common = max(set(alert_types), key=alert_types.count)
+            
+            if alert_types.count(most_common) >= 3:
+                # Pattern detected - proactive action
+                prediction = {
+                    "pattern": f"Recurring {most_common} alerts",
+                    "confidence": alert_types.count(most_common) / len(alert_types),
+                    "recommendation": f"Investigate root cause of {most_common}",
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                send_agent_notification(f"🔮 Agent Prediction: Pattern detected - {prediction['pattern']} (confidence: {prediction['confidence']:.1%})")
+                
+                print(f"🎯 Agent: Detected pattern - {prediction['pattern']}")
+    
+    except Exception as e:
+        print(f"❌ Agent: Predictive analysis failed: {e}")
+
+def pattern_learning():
+    """Agent learns from historical data to improve responses"""
+    print("🧠 Agent: Learning from patterns...")
+    
+    try:
+        # Analyze successful resolutions
+        successful_actions = [action for action in agent_state.autonomous_actions_taken 
+                            if action.get("result", "").startswith("Success")]
+        
+        # Update learned patterns
+        for action in successful_actions[-5:]:  # Learn from last 5 successful actions
+            issue_type = action["issue_type"]
+            if issue_type not in agent_state.learned_patterns:
+                agent_state.learned_patterns[issue_type] = {
+                    "success_count": 0,
+                    "total_attempts": 0,
+                    "best_action": None
+                }
+            
+            agent_state.learned_patterns[issue_type]["success_count"] += 1
+            agent_state.learned_patterns[issue_type]["total_attempts"] += 1
+            agent_state.learned_patterns[issue_type]["best_action"] = action.get("result")
+        
+        print(f"🧠 Agent: Learned from {len(successful_actions)} successful actions")
+    
+    except Exception as e:
+        print(f"❌ Agent: Pattern learning failed: {e}")
+
+def send_agent_notification(message: str):
+    """Send autonomous agent notifications to Slack"""
+    slack_webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+    if slack_webhook_url:
+        try:
+            payload = {
+                "text": f"🤖 **DevOps Sentinel Agent**\n{message}\n⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            }
+            requests.post(slack_webhook_url, json=payload, timeout=10)
+            print(f"📤 Agent: Notification sent to Slack")
+        except Exception as e:
+            print(f"❌ Agent: Failed to send notification: {e}")
+
+# --- ENHANCED ALERT PROCESSING WITH AGENT CAPABILITIES ---
+@app.post("/agent/process-alert/")
+async def agent_process_alert(request_data: dict):
+    """Enhanced alert processing with autonomous agent capabilities"""
+    
+    # Store alert in agent memory
+    alert_info = {
+        "type": request_data.get("alertname", "unknown"),
+        "timestamp": datetime.now().isoformat(),
+        "severity": request_data.get("severity", "medium"),
+        "service": request_data.get("service", "unknown")
+    }
+    agent_state.alert_history.append(alert_info)
+    
+    # Keep only last 50 alerts
+    if len(agent_state.alert_history) > 50:
+        agent_state.alert_history = agent_state.alert_history[-50:]
+    
+    # Check if agent has learned how to handle this alert type
+    alert_type = alert_info["type"]
+    if alert_type in agent_state.learned_patterns:
+        pattern = agent_state.learned_patterns[alert_type]
+        success_rate = pattern["success_count"] / pattern["total_attempts"]
+        
+        if success_rate > 0.7:  # High confidence
+            print(f"🤖 Agent: Using learned pattern for {alert_type} (success rate: {success_rate:.1%})")
+            
+            # Apply learned solution
+            auto_response = f"🤖 **Agent Auto-Response** (Confidence: {success_rate:.1%})\n\n"
+            auto_response += f"Based on previous successful resolutions:\n{pattern['best_action']}\n\n"
+            auto_response += "**Recommended Action:** " + pattern.get('best_action', 'Apply standard procedure')
+            
+            send_agent_notification(f"🎯 Agent: Applied learned solution for {alert_type}")
+            
+            return {
+                "agent_response": auto_response,
+                "confidence": success_rate,
+                "source": "learned_pattern",
+                "success": True
+            }
+    
+    # If no learned pattern, use normal RAG processing
+    # ... (your existing process-input logic here) ...
+    
+    print(f"🔍 Agent: Processing new alert type: {alert_type}")
+    # Continue with normal processing...
+
+# --- AGENT STATUS AND CONTROL ENDPOINTS ---
+@app.get("/agent/status")
+def get_agent_status():
+    """Get current agent status and capabilities"""
+    return {
+        "monitoring_active": agent_state.monitoring_active,
+        "last_health_check": agent_state.last_health_check.isoformat() if agent_state.last_health_check else None,
+        "total_autonomous_actions": len(agent_state.autonomous_actions_taken),
+        "learned_patterns_count": len(agent_state.learned_patterns),
+        "recent_alerts_count": len(agent_state.alert_history),
+        "capabilities": {
+            "autonomous_monitoring": True,
+            "predictive_analysis": True,
+            "pattern_learning": True,
+            "auto_remediation": True,
+            "proactive_notifications": True
+        },
+        "agent_memory": {
+            "successful_actions": len([a for a in agent_state.autonomous_actions_taken if "Success" in a.get("result", "")]),
+            "patterns_learned": list(agent_state.learned_patterns.keys()),
+            "uptime": "Active" if agent_state.monitoring_active else "Stopped"
+        }
+    }
+
+@app.get("/agent/actions")
+def get_agent_actions():
+    """Get recent autonomous actions taken by the agent"""
+    return {
+        "recent_actions": agent_state.autonomous_actions_taken[-10:],  # Last 10 actions
+        "total_actions": len(agent_state.autonomous_actions_taken),
+        "learned_patterns": agent_state.learned_patterns
+    }

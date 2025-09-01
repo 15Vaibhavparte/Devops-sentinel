@@ -234,6 +234,85 @@ with col2:
     else:
         st.info("🤖 Ask a question first to enable Slack sharing!")
 
+# --- Autonomous Agent Controls ---
+def render_agent_controls():
+    """Render autonomous agent controls in sidebar"""
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🤖 Autonomous Agent")
+    
+    # Get agent status
+    try:
+        agent_status = requests.get(f"{API_BASE_URL}/agent/status", timeout=10).json()
+        
+        if agent_status.get("monitoring_active"):
+            st.sidebar.success("🟢 Agent: ACTIVE")
+            
+            if st.sidebar.button("🛑 Stop Agent"):
+                requests.post(f"{API_BASE_URL}/agent/stop-monitoring/")
+                st.rerun()
+        else:
+            st.sidebar.error("🔴 Agent: OFFLINE")
+            
+            if st.sidebar.button("🚀 Start Agent"):
+                requests.post(f"{API_BASE_URL}/agent/start-monitoring/")
+                st.rerun()
+        
+        # Show agent stats
+        st.sidebar.metric("Autonomous Actions", agent_status.get("total_autonomous_actions", 0))
+        st.sidebar.metric("Patterns Learned", agent_status.get("learned_patterns_count", 0))
+        
+        # Show recent agent actions
+        if st.sidebar.button("📊 View Agent Actions"):
+            st.session_state.show_agent_actions = True
+            
+    except Exception as e:
+        st.sidebar.warning("⚠️ Agent status unavailable")
+
+def render_agent_dashboard():
+    """Render agent dashboard page"""
+    
+    st.title("🤖 DevOps Sentinel - Autonomous Agent Dashboard")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Agent Status", "🟢 ACTIVE" if get_agent_status() else "🔴 OFFLINE")
+    
+    with col2:
+        agent_data = requests.get(f"{API_BASE_URL}/agent/actions").json()
+        st.metric("Actions Taken", len(agent_data.get("recent_actions", [])))
+    
+    with col3:
+        st.metric("Patterns Learned", len(agent_data.get("learned_patterns", {})))
+    
+    # Recent autonomous actions
+    st.subheader("🔄 Recent Autonomous Actions")
+    
+    for action in agent_data.get("recent_actions", []):
+        with st.expander(f"🤖 {action['issue_type']} - {action['timestamp'][:19]}"):
+            st.json(action)
+    
+    # Learned patterns
+    st.subheader("🧠 Learned Patterns")
+    
+    for pattern, data in agent_data.get("learned_patterns", {}).items():
+        success_rate = data["success_count"] / data["total_attempts"] if data["total_attempts"] > 0 else 0
+        
+        st.write(f"**{pattern}**")
+        st.progress(success_rate)
+        st.write(f"Success Rate: {success_rate:.1%} ({data['success_count']}/{data['total_attempts']})")
+        st.write(f"Best Action: {data.get('best_action', 'None learned yet')}")
+        st.write("---")
+
+# Add to your main UI function:
+# In your main UI, add this to the sidebar:
+render_agent_controls()
+
+# Add agent dashboard option
+if st.session_state.get('show_agent_actions'):
+    render_agent_dashboard()
+
 # --- Footer ---
 st.markdown("---")
 st.markdown(
