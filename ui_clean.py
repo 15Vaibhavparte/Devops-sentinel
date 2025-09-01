@@ -249,25 +249,51 @@ def render_agent_controls():
             st.sidebar.success("🟢 Agent: ACTIVE")
             
             if st.sidebar.button("🛑 Stop Agent"):
-                requests.post(f"{API_BASE_URL}/agent/stop-monitoring/")
-                st.rerun()
+                try:
+                    requests.post(f"{API_BASE_URL}/agent/stop-monitoring/", timeout=10)
+                    st.sidebar.success("Agent stopped!")
+                    st.rerun()
+                except:
+                    st.sidebar.error("Failed to stop agent")
         else:
             st.sidebar.error("🔴 Agent: OFFLINE")
             
             if st.sidebar.button("🚀 Start Agent"):
-                requests.post(f"{API_BASE_URL}/agent/start-monitoring/")
-                st.rerun()
+                try:
+                    requests.post(f"{API_BASE_URL}/agent/start-monitoring/", timeout=10)
+                    st.sidebar.success("Agent started!")
+                    st.rerun()
+                except:
+                    st.sidebar.error("Failed to start agent")
         
         # Show agent stats
         st.sidebar.metric("Autonomous Actions", agent_status.get("total_autonomous_actions", 0))
         st.sidebar.metric("Patterns Learned", agent_status.get("learned_patterns_count", 0))
+        st.sidebar.metric("Memory Usage", agent_status.get("memory_usage_mb", "Unknown"))
         
         # Show recent agent actions
         if st.sidebar.button("📊 View Agent Actions"):
             st.session_state.show_agent_actions = True
+            st.rerun()
             
+    except requests.exceptions.RequestException as e:
+        st.sidebar.warning("⚠️ Agent endpoints not available")
+        st.sidebar.text("Agent may not be deployed")
+        
+        # Show manual test button
+        if st.sidebar.button("🧪 Test Agent Endpoints"):
+            st.session_state.test_agent = True
+            st.rerun()
     except Exception as e:
-        st.sidebar.warning("⚠️ Agent status unavailable")
+        st.sidebar.error(f"❌ Agent error: {str(e)}")
+
+def get_agent_status():
+    """Get agent status safely"""
+    try:
+        response = requests.get(f"{API_BASE_URL}/agent/status", timeout=5)
+        return response.status_code == 200 and response.json().get("monitoring_active", False)
+    except:
+        return False
 
 def render_agent_dashboard():
     """Render agent dashboard page"""
@@ -308,6 +334,34 @@ def render_agent_dashboard():
 # Add to your main UI function:
 # In your main UI, add this to the sidebar:
 render_agent_controls()
+
+# Add agent testing section
+if st.session_state.get('test_agent'):
+    st.sidebar.markdown("### 🧪 Agent Endpoint Testing")
+    
+    endpoints = [
+        "/agent/status",
+        "/agent/start-monitoring/",
+        "/agent/actions"
+    ]
+    
+    for endpoint in endpoints:
+        try:
+            if endpoint.endswith("/"):
+                response = requests.post(f"{API_BASE_URL}{endpoint}", timeout=5)
+            else:
+                response = requests.get(f"{API_BASE_URL}{endpoint}", timeout=5)
+            
+            if response.status_code == 200:
+                st.sidebar.success(f"✅ {endpoint}")
+            else:
+                st.sidebar.error(f"❌ {endpoint} ({response.status_code})")
+        except:
+            st.sidebar.error(f"❌ {endpoint} (failed)")
+    
+    if st.sidebar.button("🔄 Clear Test"):
+        st.session_state.test_agent = False
+        st.rerun()
 
 # Add agent dashboard option
 if st.session_state.get('show_agent_actions'):
