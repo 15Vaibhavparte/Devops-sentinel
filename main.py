@@ -1189,13 +1189,13 @@ async def stop_autonomous_monitoring():
 
 def run_monitoring_scheduler():
     """Background scheduler for autonomous monitoring"""
-    schedule.every(30).seconds.do(autonomous_health_check)
-    schedule.every(5).minutes.do(predictive_analysis)
-    schedule.every(15).minutes.do(pattern_learning)
+    schedule.every(5).minutes.do(autonomous_health_check)  # Every 5 minutes instead of 30 seconds
+    schedule.every(10).minutes.do(predictive_analysis)     # Every 10 minutes instead of 5
+    schedule.every(30).minutes.do(pattern_learning)       # Every 30 minutes instead of 15
     
     while agent_state.monitoring_active:
         schedule.run_pending()
-        time.sleep(10)
+        time.sleep(30)  # Check every 30 seconds instead of 10
 
 def autonomous_health_check():
     """Agent monitors external DevOps systems for issues"""
@@ -1234,24 +1234,27 @@ def autonomous_health_check():
                         "timestamp": time.time()
                     })
         
-        # 4. Check system availability (simulate external monitoring)
-        try:
-            # This simulates checking external systems
-            health_response = requests.get(f"{os.getenv('API_BASE_URL', 'http://localhost:8000')}/health", timeout=5)
-            if health_response.status_code != 200:
-                autonomous_action("api_health_degraded", {
-                    "status_code": health_response.status_code,
-                    "severity": "warning",
-                    "system": "api_gateway",
-                    "action": "monitor_closely",
-                    "timestamp": time.time()
-                })
-        except Exception as health_error:
-            autonomous_action("external_system_unreachable", {
-                "error": str(health_error),
-                "severity": "critical",
-                "system": "external_api",
-                "action": "escalate",
+        # 4. Monitor external DevOps systems (not self)
+        # Only check external systems, not our own API to avoid circular dependencies
+        print("🔍 Agent: Monitoring external systems health...")
+        
+        # Example: You could add checks for actual external systems here:
+        # - Database connections
+        # - External APIs
+        # - Service dependencies
+        # - File system health
+        
+        # For now, just monitor successful recent actions as a health indicator
+        recent_successful_actions = [action for action in agent_state.autonomous_actions_taken[-10:] 
+                                   if action.get("result", "").startswith("Success")]
+        
+        if len(agent_state.autonomous_actions_taken) > 5 and len(recent_successful_actions) == 0:
+            autonomous_action("low_success_rate", {
+                "total_recent_actions": len(agent_state.autonomous_actions_taken[-10:]),
+                "successful_actions": len(recent_successful_actions),
+                "severity": "warning",
+                "system": "agent_effectiveness",
+                "action": "review_patterns",
                 "timestamp": time.time()
             })
         
@@ -1323,11 +1326,18 @@ def autonomous_action(issue_type: str, context: dict):
             else:
                 action_taken["result"] = f"Learning: No solution found for {alert_name} - flagged for knowledge base improvement"
                 send_agent_notification(f"📚 KNOWLEDGE GAP: No solution found for '{alert_name}' on {service} - Consider updating knowledge base")
+        
+        elif issue_type == "low_success_rate":
+            # Agent effectiveness monitoring
+            total_actions = context.get("total_recent_actions", 0)
+            successful = context.get("successful_actions", 0)
+            send_agent_notification(f"📊 AGENT PERFORMANCE: Low success rate - {successful}/{total_actions} recent actions successful")
+            action_taken["result"] = f"Success: Performance monitoring alert sent ({successful}/{total_actions})"
             
         else:
-            # Handle Grafana alerts and other DevOps events
-            send_agent_notification(f"🤖 DevOps Agent: Handled {issue_type} - Context: {context}")
+            # Handle other DevOps events
             action_taken["result"] = f"Success: Processed {issue_type}"
+            print(f"🤖 Agent: Processed {issue_type}")
             
     except Exception as e:
         action_taken["result"] = f"Failed: {str(e)}"
