@@ -54,7 +54,12 @@ import random
 import requests  # Added for Slack notifications
 import certifi
 import ssl
-
+#----------------
+import asyncio
+import schedule
+import threading
+from datetime import datetime, timedelta
+import json
 # --- INITIALIZATION ---
 app = FastAPI(title="DevOps Sentinel Query Agent", version="1.0.0")
 
@@ -1112,11 +1117,7 @@ debug_database_url()
 
 # Add these new agent capabilities to your main.py:
 
-import asyncio
-import schedule
-import threading
-from datetime import datetime, timedelta
-import json
+
 
 # --- AGENT STATE MANAGEMENT ---
 class AgentState:
