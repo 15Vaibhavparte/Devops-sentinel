@@ -1328,9 +1328,26 @@ def autonomous_action(issue_type: str, context: dict):
     # Store action in agent memory
     agent_state.autonomous_actions_taken.append(action_taken)
     
+    # Learn pattern immediately if action was successful
+    if action_taken.get("result", "").startswith("Success"):
+        try:
+            issue_type = action_taken["issue_type"]
+            if issue_type not in agent_state.learned_patterns:
+                agent_state.learned_patterns[issue_type] = {
+                    "success_count": 0,
+                    "total_attempts": 0,
+                    "best_action": None
+                }
+            
+            agent_state.learned_patterns[issue_type]["success_count"] += 1
+            agent_state.learned_patterns[issue_type]["total_attempts"] += 1
+            agent_state.learned_patterns[issue_type]["best_action"] = action_taken.get("result")
+            
+            print(f"🧠 Agent: Immediately learned pattern for {issue_type}")
+        except Exception as e:
+            print(f"❌ Immediate pattern learning failed: {e}")
+    
     # Keep only last 100 actions
-    if len(agent_state.autonomous_actions_taken) > 100:
-        agent_state.autonomous_actions_taken = agent_state.autonomous_actions_taken[-100:]
     if len(agent_state.autonomous_actions_taken) > 100:
         agent_state.autonomous_actions_taken = agent_state.autonomous_actions_taken[-100:]
 
