@@ -404,13 +404,198 @@ GET /metrics
 ```
 
 ### **🔔 Integrations**
-```http
-# Grafana webhook
-POST /alert-trigger/
+## 🔔 Grafana Integration
 
-# Slack notification
-POST /notify-slack/
+### **📊 How to Connect Grafana to Your Agent**
+
+Your DevOps Sentinel can automatically process Grafana alerts and provide intelligent solutions. Here's how to set it up:
+
+#### **1. 🎯 Grafana Webhook Configuration**
+
+In your Grafana alerting, set the webhook URL to:
 ```
+https://devops-sentinel-production.up.railway.app/process-input/
+```
+
+#### **2. 📋 Step-by-Step Setup**
+
+1. **Open Grafana Dashboard**
+   - Navigate to **Alerting** → **Notification channels**
+   - Click **"New Channel"**
+
+2. **Configure Webhook**
+   - **Name**: `DevOps Sentinel Agent`
+   - **Type**: `Webhook`
+   - **URL**: `https://devops-sentinel-production.up.railway.app/process-input/`
+   - **HTTP Method**: `POST`
+   - **Content Type**: `application/json`
+
+3. **Set Alert Format**
+   ```json
+   {
+     "question": "{{range .Alerts}}Alert: {{.Annotations.summary}} for service {{.Labels.service}}. How do I resolve this issue?{{end}}"
+   }
+   ```
+
+4. **Test the Integration**
+   - Click **"Send Test"** to verify connection
+   - Check your DevOps Sentinel logs for successful processing
+
+#### **3. 🎨 Advanced Alert Templates**
+
+For more detailed alerts, use this custom template:
+
+```json
+{
+  "question": "{{range .Alerts}}🚨 ALERT: {{.Annotations.summary}}\n\n📊 Details:\n- Service: {{.Labels.service}}\n- Instance: {{.Labels.instance}}\n- Severity: {{.Labels.severity}}\n- Value: {{.ValueString}}\n\nWhat are the recommended steps to resolve this {{.Labels.alertname}} issue?{{end}}",
+  "alert_metadata": {
+    "grafana_alert": true,
+    "alert_count": "{{len .Alerts}}",
+    "status": "{{.Status}}"
+  }
+}
+```
+
+#### **4. 🔧 Alert Rule Examples**
+
+**Database Connection Alert:**
+```yaml
+# In your Grafana alert rule
+- alert: DatabaseConnectionTimeout
+  expr: mysql_up == 0
+  for: 2m
+  labels:
+    severity: critical
+    service: mysql-prod
+  annotations:
+    summary: "Database connection timeout detected"
+    description: "MySQL database is unreachable for more than 2 minutes"
+```
+
+**High CPU Usage Alert:**
+```yaml
+- alert: HighCPUUsage
+  expr: cpu_usage_percent > 80
+  for: 5m
+  labels:
+    severity: warning
+    service: web-server
+  annotations:
+    summary: "High CPU usage detected"
+    description: "CPU usage is above 80% for 5 minutes"
+```
+
+#### **5. 🎯 What Happens When Grafana Sends an Alert**
+
+```mermaid
+sequenceDiagram
+    participant G as 📊 Grafana
+    participant DS as 🤖 DevOps Sentinel
+    participant T as 🗄️ TiDB Cloud
+    participant AI as 🧠 Gemini AI
+    participant S as 💬 Slack
+
+    G->>DS: Webhook Alert
+    Note over DS: Transform alert to question
+    DS->>T: Vector search for solutions
+    T-->>DS: Relevant knowledge
+    DS->>AI: Generate solution
+    AI-->>DS: Intelligent response
+    DS->>S: Send solution to team
+    Note over DS: Learn from interaction
+```
+
+#### **6. 📱 Slack Integration (Optional)**
+
+To receive alert solutions in Slack automatically:
+
+1. **Create Slack Webhook**
+   - Go to your Slack workspace
+   - Create a new webhook URL
+   - Copy the webhook URL
+
+2. **Configure Environment Variable**
+   ```bash
+   # In Railway or your deployment
+   SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+   ```
+
+3. **Automatic Notifications**
+   - DevOps Sentinel will automatically send solutions to Slack
+   - Include alert details and AI-generated remediation steps
+   - Team gets instant actionable guidance
+
+#### **7. 🧪 Testing Your Integration**
+
+**Manual Test via Grafana:**
+```bash
+# Test webhook directly from Grafana UI
+# Use the "Send Test" button in notification channels
+```
+
+**API Test (PowerShell):**
+```powershell
+# Simulate a Grafana alert
+$grafanaAlert = @{
+    question = "🚨 ALERT: Database connection timeout detected for mysql-prod. How do I resolve this issue?"
+    alert_metadata = @{
+        grafana_alert = $true
+        alert_count = 1
+        status = "firing"
+    }
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "https://devops-sentinel-production.up.railway.app/process-input/" -Method POST -Body $grafanaAlert -ContentType "application/json"
+```
+
+**Verify Agent Learning:**
+```powershell
+# Check if agent learned from the alert
+Invoke-RestMethod -Uri "https://devops-sentinel-production.up.railway.app/agent/actions" -Method GET
+```
+
+#### **8. 📊 Monitoring Integration Health**
+
+**Check Agent Status:**
+- Visit your [DevOps Sentinel Dashboard](https://devops-sentinel.streamlit.app)
+- Monitor **Autonomous Actions** counter
+- View **Patterns Learned** section
+
+**Grafana Integration Metrics:**
+- **Alert Processing Time**: How fast solutions are generated
+- **Pattern Recognition**: How well the agent learns from alerts
+- **Solution Accuracy**: Feedback from team on solution quality
+
+#### **9. 🎯 Best Practices**
+
+**Alert Naming:**
+- Use descriptive alert names: `DatabaseConnectionTimeout`, `HighMemoryUsage`
+- Include service names in labels for better context
+
+**Alert Frequency:**
+- Set appropriate `for` durations to avoid alert storms
+- Use different webhooks for different severity levels
+
+**Solution Quality:**
+- Regularly update your knowledge base with new runbooks
+- Review agent-generated solutions and provide feedback
+- Use the agent's learning capabilities to improve over time
+
+**Team Workflow:**
+```
+🚨 Grafana Alert → 🤖 Agent Processes → 💬 Slack Notification → 👩‍💻 Team Acts → 📚 Knowledge Updated
+```
+
+---
+
+### **🎉 Ready to Go!**
+
+Your Grafana alerts will now automatically trigger intelligent DevOps solutions! The agent will:
+- ✅ **Process alerts instantly**
+- ✅ **Generate actionable solutions**
+- ✅ **Notify your team via Slack**
+- ✅ **Learn from each interaction**
+- ✅ **Improve responses over time**
 
 ### **📚 Interactive API Documentation**
 Visit `/docs` on your backend URL for full Swagger/OpenAPI documentation with interactive testing.
@@ -550,25 +735,6 @@ python connect_test.py
 - Add docstrings for functions and classes
 - Keep functions focused and testable
 
----
-
-## 🎯 Roadmap
-
-### **🚀 Version 2.0 (Coming Soon)**
-- [ ] **Multi-Cloud Support**: AWS, GCP, Azure integrations
-- [ ] **Advanced Analytics**: Trend analysis and forecasting
-- [ ] **Custom Playbooks**: User-defined remediation workflows
-- [ ] **Team Management**: Role-based access control
-- [ ] **API Authentication**: Secure API access with JWT tokens
-
-### **🔮 Future Vision**
-- [ ] **Multi-Agent Collaboration**: Specialized agents for different domains
-- [ ] **Natural Language Queries**: Voice and chat-based interactions
-- [ ] **Integration Marketplace**: Pre-built connectors for popular tools
-- [ ] **Enterprise SSO**: SAML, OAuth, and LDAP support
-- [ ] **Custom LLM Training**: Domain-specific model fine-tuning
-
----
 
 ## 🏆 Hackathon Highlights
 
@@ -590,14 +756,6 @@ python connect_test.py
 - **Scalable Design**: Handles concurrent users and high alert volumes
 - **Production Ready**: Comprehensive logging, monitoring, and security
 
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
 ## 🙏 Acknowledgments
 
 - **TiDB Cloud** - Vector database platform and hackathon opportunity
@@ -607,16 +765,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **FastAPI** - High-performance API framework
 - **Open Source Community** - Countless libraries and tools that made this possible
 
----
-
-## 📞 Support & Contact
-
-- **🐛 Issues**: [GitHub Issues](https://github.com/15Vaibhavparte/Devops-sentinel/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/15Vaibhavparte/Devops-sentinel/discussions)
-- **📧 Email**: your-email@example.com
-- **🌐 Demo**: [devops-sentinel.streamlit.app](https://devops-sentinel.streamlit.app)
-
----
 
 <div align="center">
 
