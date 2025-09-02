@@ -486,7 +486,7 @@ sequenceDiagram
     Note over DS: Learn from interaction
 ```
 
-### . 📱 Slack Integration (Optional)**
+## 📱 Slack Integration (Optional)**
 
 To receive alert solutions in Slack automatically:
 
@@ -579,7 +579,47 @@ Your Grafana alerts will now automatically trigger intelligent DevOps solutions!
 - ✅ **Improve responses over time**
 
 ### **📚 Interactive API Documentation**
-Visit `/docs` on your backend URL for full Swagger/OpenAPI documentation with interactive testing.
+
+#### **🌐 Access Swagger UI**
+
+**Live Demo:**
+```
+https://devops-sentinel-production.up.railway.app/docs
+```
+
+#### **📋 How to Use Locally**
+
+1. **Start the Backend Server**
+   ```bash
+   cd Devops-sentinel
+   python -m uvicorn main:app --reload --port 8000
+   ```
+
+2. **Open Swagger UI**
+   - Go to: `http://localhost:8000/docs` in your browser
+   - The interactive API documentation will load
+
+3. **Test Any Endpoint**
+   - Click on any endpoint (like `POST /process-input/`)
+   - Click **"Try it out"**
+   - Edit the example JSON if needed
+   - Click **"Execute"** to test
+
+#### **🧪 Quick Local Tests**
+
+**Test the AI Agent:**
+- Go to `POST /process-input/`
+- Click "Try it out"
+- Replace with: `{"question": "How do I fix Docker issues?"}`
+- Click "Execute"
+
+**Check System Health:**
+- Go to `GET /health`
+- Click "Try it out" → "Execute"
+
+**Start Autonomous Agent:**
+- Go to `POST /agent/start-monitoring/`
+- Click "Try it out" → "Execute"
 
 ---
 
@@ -697,25 +737,6 @@ pre-commit install
 3. Commit using conventional commits: `git commit -m "feat: add amazing feature"`
 4. Push to your branch: `git push origin feature/amazing-feature`
 5. Open a Pull Request with detailed description
-
-### **🧪 Testing**
-```bash
-# Run backend tests
-python -m pytest tests/
-
-# Test API endpoints
-python test_streamlit_connection.py
-
-# Run integration tests
-python connect_test.py
-```
-
-### **📋 Code Style**
-- Follow PEP 8 for Python code
-- Use type hints where possible
-- Add docstrings for functions and classes
-- Keep functions focused and testable
-
 
 ## 🏆 Hackathon Highlights
 
