@@ -340,49 +340,6 @@ GEMINI_API_KEY=your-gemini-api-key
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/url
 API_BASE_URL=https://your-backend-url.com
 
-# Application Settings
-DEBUG=False
-LOG_LEVEL=INFO
-```
-
-## 📊 API Endpoints
-
-### **🔍 Query & Analysis**
-```http
-POST /process-input/
-Content-Type: application/json
-
-{
-  "question": "How do I fix database connection timeouts?"
-}
-```
-
-### **🤖 Agent Management**
-```http
-# Start autonomous monitoring
-POST /agent/start-monitoring/
-
-# Stop autonomous monitoring  
-POST /agent/stop-monitoring/
-
-# Get agent status
-GET /agent/status
-
-# Get agent actions history
-GET /agent/actions
-```
-
-### **📊 System Information**
-```http
-Health check
-GET /health
-
-# Knowledge base statistics
-GET /stats
-
-# System metrics
-GET /metrics
-```
 
 ## **🔔 Integrations**
 ### 🔔 Grafana Integration
@@ -578,7 +535,9 @@ Your Grafana alerts will now automatically trigger intelligent DevOps solutions!
 - ✅ **Learn from each interaction**
 - ✅ **Improve responses over time**
 
-### **📚 Interactive API Documentation**
+
+
+## **📚 Interactive API Documentation**
 
 #### **🌐 Access Swagger UI**
 
@@ -607,22 +566,49 @@ https://devops-sentinel-production.up.railway.app/docs
 
 #### **🧪 Quick Local Tests**
 
+### **🔍 Query & Analysis**
+```http
+POST /process-input/
+Content-Type: application/json
+
+{
+  "question": "How do I fix database connection timeouts?"
+}
+```
+
 **Test the AI Agent:**
 - Go to `POST /process-input/`
 - Click "Try it out"
 - Replace with: `{"question": "How do I fix Docker issues?"}`
 - Click "Execute"
 
-**Check System Health:**
-- Go to `GET /health`
-- Click "Try it out" → "Execute"
+### **🤖 Agent Management**
+```http
+# Start autonomous monitoring
+POST /agent/start-monitoring/
 
-**Start Autonomous Agent:**
-- Go to `POST /agent/start-monitoring/`
-- Click "Try it out" → "Execute"
+# Stop autonomous monitoring  
+POST /agent/stop-monitoring/
 
+# Get agent status
+GET /agent/status
+
+# Get agent actions history
+GET /agent/actions
+```
+
+### **📊 System Information**
+```http
+Health check
+GET /health
+
+# Knowledge base statistics
+GET /stats
+
+# System metrics
+GET /metrics
+```
 ---
-
 ## 🐳 Docker Deployment
 
 ### **🚀 Single Container**
