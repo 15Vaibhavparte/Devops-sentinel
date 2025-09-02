@@ -8,7 +8,7 @@ _Your AI-Powered Autonomous Agent for DevOps Operations_
 [![Railway](https://img.shields.io/badge/railway-deployed-purple)](https://railway.app/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](https://www.docker.com/)
 
-> **🏆 TiDB Cloud Hackathon 2024 Project**  
+> **🏆 TiDB Cloud Hackathon 2025 Project**  
 > An autonomous AI agent that transforms DevOps alert chaos into intelligent, actionable solutions using TiDB Cloud's vector capabilities and Google Gemini LLM.
 
 ---
@@ -140,13 +140,13 @@ graph TB
     Learn --> Action
     Action --> API
 
-    %% Styling
-    classDef frontend fill:#e1f5fe
-    classDef backend fill:#f3e5f5
-    classDef ai fill:#e8f5e8
-    classDef data fill:#fff3e0
-    classDef integration fill:#fce4ec
-    classDef autonomous fill:#f1f8e9
+    %% Enhanced Styling for Better Visibility
+    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000000
+    classDef backend fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000000
+    classDef ai fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000000
+    classDef data fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000000
+    classDef integration fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000000
+    classDef autonomous fill:#f1f8e9,stroke:#689f38,stroke-width:2px,color:#000000
     
     class UI,Mobile frontend
     class API,Auth,Scheduler backend
@@ -191,7 +191,13 @@ sequenceDiagram
 
 ---
 
-## ✨ Key Features
+## 🤖 AI-Agent Features
+
+### **👁️ Health Monitoring**
+- **System Metrics**: CPU, memory, disk usage tracking
+- **Database Health**: Connection status and query performance
+- **API Monitoring**: Endpoint availability and response times
+- **Pattern Detection**: Anomaly identification and alerting
 
 ### 🤖 **Autonomous Intelligence**
 - **Pattern Recognition**: Learns from historical incidents
@@ -205,11 +211,11 @@ sequenceDiagram
 - **Multi-Source**: Integrates runbooks, logs, and documentation
 - **Real-time**: Sub-second response times for critical alerts
 
-### 🎨 **Modern User Experience**
-- **Interactive Dashboard**: Real-time agent status and metrics
-- **Mobile Responsive**: Works seamlessly on all devices
-- **Dark/Light Theme**: Automatic theme detection
-- **Quick Actions**: Pre-built common queries and solutions
+### **🧠 Machine Learning**
+- **Pattern Learning**: Automatically identifies common issue patterns
+- **Success Tracking**: Monitors solution effectiveness
+- **Predictive Analytics**: Forecasts potential system issues
+- **Recommendation Engine**: Suggests optimal remediation actions
 
 ### 🔗 **Enterprise Integrations**
 - **Slack Integration**: Automated notifications and team collaboration
@@ -217,6 +223,12 @@ sequenceDiagram
 - **REST API**: Easy integration with existing DevOps tools
 - **Docker Ready**: Containerized for any cloud platform
 
+### **📊 Agent Dashboard**
+Access the autonomous agent controls through the Streamlit UI:
+- **Agent Status**: Real-time monitoring state
+- **Action History**: Recent autonomous actions taken
+- **Pattern Database**: Learned patterns and success rates
+- **Manual Controls**: Start/stop agent monitoring
 ---
 
 ## 🛠️ Tech Stack
@@ -333,37 +345,6 @@ DEBUG=False
 LOG_LEVEL=INFO
 ```
 
----
-
-## 🤖 Autonomous Agent Features
-
-### **👁️ Health Monitoring**
-- **System Metrics**: CPU, memory, disk usage tracking
-- **Database Health**: Connection status and query performance
-- **API Monitoring**: Endpoint availability and response times
-- **Pattern Detection**: Anomaly identification and alerting
-
-### **🧠 Machine Learning**
-- **Pattern Learning**: Automatically identifies common issue patterns
-- **Success Tracking**: Monitors solution effectiveness
-- **Predictive Analytics**: Forecasts potential system issues
-- **Recommendation Engine**: Suggests optimal remediation actions
-
-### **⚡ Auto-remediation**
-- **Restart Services**: Automatically restart failed processes
-- **Clear Caches**: Clean up memory and disk space
-- **Update Configurations**: Apply known fixes automatically
-- **Scale Resources**: Trigger auto-scaling based on metrics
-
-### **📊 Agent Dashboard**
-Access the autonomous agent controls through the Streamlit UI:
-- **Agent Status**: Real-time monitoring state
-- **Action History**: Recent autonomous actions taken
-- **Pattern Database**: Learned patterns and success rates
-- **Manual Controls**: Start/stop agent monitoring
-
----
-
 ## 📊 API Endpoints
 
 ### **🔍 Query & Analysis**
@@ -393,7 +374,7 @@ GET /agent/actions
 
 ### **📊 System Information**
 ```http
-# Health check
+Health check
 GET /health
 
 # Knowledge base statistics
@@ -403,8 +384,8 @@ GET /stats
 GET /metrics
 ```
 
-### **🔔 Integrations**
-## 🔔 Grafana Integration
+## **🔔 Integrations**
+### 🔔 Grafana Integration
 
 ### **📊 How to Connect Grafana to Your Agent**
 
@@ -505,7 +486,7 @@ sequenceDiagram
     Note over DS: Learn from interaction
 ```
 
-#### **6. 📱 Slack Integration (Optional)**
+### . 📱 Slack Integration (Optional)**
 
 To receive alert solutions in Slack automatically:
 
@@ -525,7 +506,7 @@ To receive alert solutions in Slack automatically:
    - Include alert details and AI-generated remediation steps
    - Team gets instant actionable guidance
 
-#### **7. 🧪 Testing Your Integration**
+#### **6. 🧪 Testing Your Integration**
 
 **Manual Test via Grafana:**
 ```bash
@@ -554,7 +535,7 @@ Invoke-RestMethod -Uri "https://devops-sentinel-production.up.railway.app/proces
 Invoke-RestMethod -Uri "https://devops-sentinel-production.up.railway.app/agent/actions" -Method GET
 ```
 
-#### **8. 📊 Monitoring Integration Health**
+#### **7. 📊 Monitoring Integration Health**
 
 **Check Agent Status:**
 - Visit your [DevOps Sentinel Dashboard](https://devops-sentinel.streamlit.app)
@@ -566,7 +547,7 @@ Invoke-RestMethod -Uri "https://devops-sentinel-production.up.railway.app/agent/
 - **Pattern Recognition**: How well the agent learns from alerts
 - **Solution Accuracy**: Feedback from team on solution quality
 
-#### **9. 🎯 Best Practices**
+#### **8. 🎯 Best Practices**
 
 **Alert Naming:**
 - Use descriptive alert names: `DatabaseConnectionTimeout`, `HighMemoryUsage`
