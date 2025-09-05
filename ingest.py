@@ -32,8 +32,22 @@ except (ValueError, TypeError):
 
 # Use the 'devops_sentinel' database
 DB_NAME = "devops_sentinel"
-ssl_ca_path = os.path.abspath("isrgrootx1.pem")
-connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_ca={ssl_ca_path}"
+
+# Check if we have a DATABASE_URL or need to construct one
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    connection_string = database_url
+    print(f"✅ Using DATABASE_URL from environment")
+else:
+    # Check SSL certificate
+    ssl_ca_path = "./certs/isrgrootx1.pem"
+    if os.path.exists(ssl_ca_path):
+        connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_ca={ssl_ca_path}"
+        print(f"✅ Using SSL certificate: {ssl_ca_path}")
+    else:
+        connection_string = f"mysql+pymysql://{tidb_user}:{tidb_password}@{tidb_host}:{tidb_port}/{DB_NAME}?ssl_disabled=false"
+        print(f"✅ Using connection without SSL file")
+
 engine = create_engine(connection_string)
 
 # -- 2. INITIALIZE MODELS AND LOADERS --

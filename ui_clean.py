@@ -149,18 +149,54 @@ with col1:
                                 """, unsafe_allow_html=True)
                             
                             # Display source context
-                            with st.expander("📖 View Source Context", expanded=False):
-                                source_context = data.get("source_context", "No context available.")
-                                if isinstance(source_context, str):
-                                    lines = source_context.split('\n')
-                                    for line in lines:
-                                        if line.strip():
-                                            if line.startswith('Source:'):
-                                                st.markdown(f"**{line}**")
+                            source_context = data.get("source_context", "")
+                            if source_context and source_context != "No relevant documents found":
+                                with st.expander("📚 View Source Context", expanded=False):
+                                    # Parse multiple sources separated by "=" * 50
+                                    source_sections = source_context.split("=" * 50)
+                                    
+                                    for i, section in enumerate(source_sections):
+                                        section = section.strip()
+                                        if not section:
+                                            continue
+                                            
+                                        st.markdown(f"### Source {i+1}")
+                                        
+                                        # Parse each section: "Source X: filename\n\nContext: content"
+                                        if "Source" in section and "Context:" in section:
+                                            lines = section.split('\n')
+                                            source_line = lines[0] if lines else ""
+                                            
+                                            # Extract source filename
+                                            if "Source" in source_line:
+                                                source_name = source_line.split(": ", 1)[1] if ": " in source_line else source_line
+                                                st.markdown(f"**{source_line}**")
+                                                st.markdown(f"**File:** `{source_name}`")
+                                            
+                                            # Extract and display context
+                                            context_start = section.find("Context:")
+                                            if context_start != -1:
+                                                context_content = section[context_start + 8:].strip()
+                                                st.markdown(f"**Context:** {context_content}")
+                                            
+                                            # Add separator between sources (except for the last one)
+                                            if i < len(source_sections) - 1:
+                                                st.markdown("---")
+                                        else:
+                                            # Handle single source format: "Source: filename\n\nContext: content"
+                                            if "Source:" in section and "Context:" in section:
+                                                parts = section.split("\n\nContext:")
+                                                if len(parts) == 2:
+                                                    source_part = parts[0].replace("Source: ", "")
+                                                    context_part = parts[1]
+                                                    st.markdown(f"**Source:** `{source_part}`")
+                                                    st.markdown(f"**Context:** {context_part[:500]}{'...' if len(context_part) > 500 else ''}")
+                                                else:
+                                                    st.markdown(section)
                                             else:
-                                                st.markdown(line)
-                                else:
-                                    st.json(source_context)
+                                                st.markdown(section)
+                            else:
+                                st.info("📄 No source context available.")
                             
                             # Save to session state
                             st.session_state['last_answer'] = data.get("answer", "")
@@ -415,4 +451,3 @@ st.markdown(
     """, 
     unsafe_allow_html=True
 )
-    

@@ -351,7 +351,15 @@ def query_agent(request: QueryRequest):
         # Combine multiple contexts for richer answers
         all_contexts = "\n\n".join([row[0] for row in rows[:2]])  # Top 2 results
         
-        print(f"DEBUG: Using context from: {source_file}")  # Added debug logging
+        # Create source context with multiple sources
+        source_contexts = []
+        for i, row in enumerate(rows[:3]):  # Show top 3 sources
+            source_contexts.append(f"Source {i+1}: {row[1]}\n\nContext: {row[0][:300]}...")
+        
+        # Join with clear separators between sources
+        combined_source_context = ("\n\n" + "="*50 + "\n\n").join(source_contexts)
+        
+        print(f"DEBUG: Using context from: {source_file} (and {len(rows)-1} other sources)")  # Added debug logging
         
         # --- STEP 4 - GENERATE AN ANSWER USING GEMINI ---
         try:
@@ -395,7 +403,7 @@ Instructions:
             return {
                 "question": request.question,
                 "answer": llm_answer,
-                "source_context": f"Source: {source_file}\n\nContext: {best_context}",
+                "source_context": combined_source_context,
                 "success": True
             }
             
@@ -415,7 +423,7 @@ Instructions:
             return {
                 "question": request.question,
                 "answer": f"LLM service unavailable. Here's the relevant information from the knowledge base:\n\n{best_context}",
-                "source_context": f"Source: {source_file}",
+                "source_context": combined_source_context,
                 "success": False
             }
             
@@ -1515,3 +1523,8 @@ def get_agent_actions():
         "total_actions": len(agent_state.autonomous_actions_taken),
         "learned_patterns": agent_state.learned_patterns
     }
+
+# Start the server
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

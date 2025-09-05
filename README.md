@@ -193,6 +193,510 @@ sequenceDiagram
 
 ---
 
+
+---
+
+## 🤖 AI-Agent Features
+
+### **👁️ Health Monitoring**
+- **System Metrics**: CPU, memory, disk usage tracking
+- **Database Health**: Connection status and query performance
+- **API Monitoring**: Endpoint availability and response times
+- **Pattern Detection**: Anomaly identification and alerting
+
+### 🤖 **Autonomous Intelligence**
+- **Pattern Recognition**: Learns from historical incidents
+- **Predictive Analysis**: Identifies potential issues before they escalate
+- **Auto-remediation**: Executes predefined solutions automatically
+- **Continuous Learning**: Improves accuracy over time
+
+### 🔍 **Advanced RAG Pipeline**
+- **Semantic Search**: Vector-based knowledge retrieval using TiDB Cloud
+- **Context-Aware**: Understands relationships between different DevOps concepts
+- **Multi-Source**: Integrates runbooks, logs, and documentation
+- **Real-time**: Sub-second response times for critical alerts
+
+### **🧠 Machine Learning**
+- **Pattern Learning**: Automatically identifies common issue patterns
+- **Success Tracking**: Monitors solution effectiveness
+- **Predictive Analytics**: Forecasts potential system issues
+- **Recommendation Engine**: Suggests optimal remediation actions
+
+### 🔗 **Enterprise Integrations**
+- **Slack Integration**: Automated notifications and team collaboration
+- **Grafana Webhooks**: Direct alert processing from monitoring systems
+- **REST API**: Easy integration with existing DevOps tools
+- **Docker Ready**: Containerized for any cloud platform
+
+### **📊 Agent Dashboard**
+Access the autonomous agent controls through the Streamlit UI:
+- **Agent Status**: Real-time monitoring state
+- **Action History**: Recent autonomous actions taken
+- **Pattern Database**: Learned patterns and success rates
+- **Manual Controls**: Start/stop agent monitoring
+---
+
+## 🛠️ Tech Stack
+
+### **🎨 Frontend**
+- **Streamlit** - Modern Python web framework
+- **Custom CSS** - Responsive design and theming
+- **Real-time Updates** - Live agent status monitoring
+
+### **⚡ Backend**
+- **FastAPI** - High-performance async API framework
+- **SQLAlchemy** - Database ORM with connection pooling
+- **PyMySQL** - MySQL database driver
+- **Schedule** - Background task scheduling
+- **psutil** - System monitoring and metrics
+
+### **🧠 AI & ML**
+- **Google Gemini 2.5 Flash** - Advanced language model
+- **SentenceTransformers** - Semantic embeddings
+- **scikit-learn** - Machine learning utilities
+- **NumPy** - Numerical computing
+
+### **🗄️ Database**
+- **TiDB Cloud** - Distributed SQL database with vector support
+- **Vector Search** - Semantic similarity search capabilities
+- **Connection Pooling** - Optimized database connections
+- **SSL/TLS** - Secure encrypted connections
+
+### **☁️ Deployment**
+- **Railway.app** - Backend hosting and CI/CD
+- **Streamlit Cloud** - Frontend hosting
+- **Docker** - Containerization and portability
+- **GitHub Actions** - Automated deployment pipeline
+
+---
+
+## 🚀 Getting Started
+
+### **📋 Prerequisites**
+- Python 3.11+
+- Docker & Docker Compose (optional)
+- TiDB Cloud account
+- Google AI Studio API key
+- Slack webhook URL (optional)
+
+### **⚡ Quick Start (5 minutes)**
+
+1. **Clone the Repository**
+```bash
+git clone https://github.com/15Vaibhavparte/Devops-sentinel.git
+cd Devops-sentinel
+```
+
+2. **Install Dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+3. **Configure Environment**
+```bash
+# Copy example environment file
+cp example.env .env
+
+# Edit .env with your credentials
+# Required: TIDB_*, GEMINI_API_KEY
+# Optional: SLACK_WEBHOOK_URL
+```
+
+4. **Initialize Knowledge Base**
+```bash
+# Ingest DevOps runbooks
+python ingest.py
+```
+
+5. **Run the Application**
+```bash
+# Start backend server
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# In another terminal, start frontend (optional - use live demo instead)
+streamlit run ui_clean.py
+```
+
+6. **Test the Agent**
+```bash
+# Test via API
+curl -X POST "http://localhost:8000/process-input/" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "How do I troubleshoot high CPU usage?"}'
+```
+
+### **🔧 Environment Variables**
+
+Create a `.env` file with the following variables:
+
+```env
+# TiDB Cloud Configuration
+TIDB_HOST=gateway01.your-region.prod.aws.tidbcloud.com
+TIDB_PORT=4000
+TIDB_USER=your-username
+TIDB_PASSWORD=your-password
+TIDB_DATABASE=devops_sentinel
+TIDB_SSL_CA=certs/isrgrootx1.pem
+# AI Configuration
+GEMINI_API_KEY=your-gemini-api-key
+# Integration (Optional)
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/url
+API_BASE_URL=https://your-backend-url.com
+```
+
+## **🔔 Integrations**
+### 🔔 Grafana Integration
+
+### **📊 How to Connect Grafana to Your Agent**
+
+Your DevOps Sentinel can automatically process Grafana alerts and provide intelligent solutions. Here's how to set it up:
+
+#### **1. 🎯 Grafana Webhook Configuration**
+
+In your Grafana alerting, set the webhook URL to:
+```
+https://devops-sentinel-production.up.railway.app/process-input/
+```
+
+#### **2. 📋 Step-by-Step Setup**
+
+1. **Open Grafana Dashboard**
+   - Navigate to **Alerting** → **Notification channels**
+   - Click **"New Channel"**
+
+2. **Configure Webhook**
+   - **Name**: `DevOps Sentinel Agent`
+   - **Type**: `Webhook`
+   - **URL**: `https://devops-sentinel-production.up.railway.app/process-input/`
+   - **HTTP Method**: `POST`
+   - **Content Type**: `application/json`
+
+3. **Set Alert Format**
+   ```json
+   {
+     "question": "{{range .Alerts}}Alert: {{.Annotations.summary}} for service {{.Labels.service}}. How do I resolve this issue?{{end}}"
+   }
+   ```
+
+4. **Test the Integration**
+   - Click **"Send Test"** to verify connection
+   - Check your DevOps Sentinel logs for successful processing
+
+#### **3. 🎨 Advanced Alert Templates**
+
+For more detailed alerts, use this custom template:
+
+```json
+{
+  "question": "{{range .Alerts}}🚨 ALERT: {{.Annotations.summary}}\n\n📊 Details:\n- Service: {{.Labels.service}}\n- Instance: {{.Labels.instance}}\n- Severity: {{.Labels.severity}}\n- Value: {{.ValueString}}\n\nWhat are the recommended steps to resolve this {{.Labels.alertname}} issue?{{end}}",
+  "alert_metadata": {
+    "grafana_alert": true,
+    "alert_count": "{{len .Alerts}}",
+    "status": "{{.Status}}"
+  }
+}
+```
+
+#### **4. 🔧 Alert Rule Examples**
+
+**Database Connection Alert:**
+```yaml
+# In your Grafana alert rule
+- alert: DatabaseConnectionTimeout
+  expr: mysql_up == 0
+  for: 2m
+  labels:
+    severity: critical
+    service: mysql-prod
+  annotations:
+    summary: "Database connection timeout detected"
+    description: "MySQL database is unreachable for more than 2 minutes"
+```
+
+**High CPU Usage Alert:**
+```yaml
+- alert: HighCPUUsage
+  expr: cpu_usage_percent > 80
+  for: 5m
+  labels:
+    severity: warning
+    service: web-server
+  annotations:
+    summary: "High CPU usage detected"
+    description: "CPU usage is above 80% for 5 minutes"
+```
+
+#### **5. 🎯 What Happens When Grafana Sends an Alert**
+
+```mermaid
+sequenceDiagram
+    participant G as 📊 Grafana
+    participant DS as 🤖 DevOps Sentinel
+    participant T as 🗄️ TiDB Cloud
+    participant AI as 🧠 Gemini AI
+    participant S as 💬 Slack
+
+    G->>DS: Webhook Alert
+    Note over DS: Transform alert to question
+    DS->>T: Vector search for solutions
+    T-->>DS: Relevant knowledge
+    DS->>AI: Generate solution
+    AI-->>DS: Intelligent response
+    DS->>S: Send solution to team
+    Note over DS: Learn from interaction
+```
+
+## 📱 Slack Integration (Optional)**
+
+To receive alert solutions in Slack automatically:
+
+1. **Create Slack Webhook**
+   - Go to your Slack workspace
+   - Create a new webhook URL
+   - Copy the webhook URL
+
+2. **Configure Environment Variable**
+   ```bash
+   # In Railway or your deployment
+   SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+   ```
+
+3. **Automatic Notifications**
+   - DevOps Sentinel will automatically send solutions to Slack
+   - Include alert details and AI-generated remediation steps
+   - Team gets instant actionable guidance
+
+#### **6. 🧪 Testing Your Integration**
+
+**Manual Test via Grafana:**
+```bash
+# Test webhook directly from Grafana UI
+# Use the "Send Test" button in notification channels
+```
+
+**API Test (PowerShell):**
+```powershell
+# Simulate a Grafana alert
+$grafanaAlert = @{
+    question = "🚨 ALERT: Database connection timeout detected for mysql-prod. How do I resolve this issue?"
+    alert_metadata = @{
+        grafana_alert = $true
+        alert_count = 1
+        status = "firing"
+    }
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "https://devops-sentinel-production.up.railway.app/process-input/" -Method POST -Body $grafanaAlert -ContentType "application/json"
+```
+
+**Verify Agent Learning:**
+```powershell
+# Check if agent learned from the alert
+Invoke-RestMethod -Uri "https://devops-sentinel-production.up.railway.app/agent/actions" -Method GET
+```
+
+#### **7. 📊 Monitoring Integration Health**
+
+**Check Agent Status:**
+- Visit your [DevOps Sentinel Dashboard](https://devops-sentinel.streamlit.app)
+- Monitor **Autonomous Actions** counter
+- View **Patterns Learned** section
+
+**Grafana Integration Metrics:**
+- **Alert Processing Time**: How fast solutions are generated
+- **Pattern Recognition**: How well the agent learns from alerts
+- **Solution Accuracy**: Feedback from team on solution quality
+
+#### **8. 🎯 Best Practices**
+
+**Alert Naming:**
+- Use descriptive alert names: `DatabaseConnectionTimeout`, `HighMemoryUsage`
+- Include service names in labels for better context
+
+**Alert Frequency:**
+- Set appropriate `for` durations to avoid alert storms
+- Use different webhooks for different severity levels
+
+**Solution Quality:**
+- Regularly update your knowledge base with new runbooks
+- Review agent-generated solutions and provide feedback
+- Use the agent's learning capabilities to improve over time
+
+**Team Workflow:**
+```
+🚨 Grafana Alert → 🤖 Agent Processes → 💬 Slack Notification → 👩‍💻 Team Acts → 📚 Knowledge Updated
+```
+
+---
+
+### **🎉 Ready to Go!**
+
+Your Grafana alerts will now automatically trigger intelligent DevOps solutions! The agent will:
+- ✅ **Process alerts instantly**
+- ✅ **Generate actionable solutions**
+- ✅ **Notify your team via Slack**
+- ✅ **Learn from each interaction**
+- ✅ **Improve responses over time**
+
+
+
+## **📚 Interactive API Documentation**
+
+#### **🌐 Access Swagger UI**
+
+**Live Demo:**
+```
+https://devops-sentinel-production.up.railway.app/docs
+```
+
+#### **📋 How to Use Locally**
+
+1. **Start the Backend Server**
+   ```bash
+   cd Devops-sentinel
+   python -m uvicorn main:app --reload --port 8000
+   ```
+
+2. **Open Swagger UI**
+   - Go to: `http://localhost:8000/docs` in your browser
+   - The interactive API documentation will load
+
+3. **Test Any Endpoint**
+   - Click on any endpoint (like `POST /process-input/`)
+   - Click **"Try it out"**
+   - Edit the example JSON if needed
+   - Click **"Execute"** to test
+
+#### **🧪 Quick Local Tests**
+
+### **🔍 Query & Analysis**
+```http
+POST /process-input/
+Content-Type: application/json
+
+{
+  "question": "How do I fix database connection timeouts?"
+}
+```
+
+**Test the AI Agent:**
+- Go to `POST /process-input/`
+- Click "Try it out"
+- Replace with: `{"question": "How do I fix Docker issues?"}`
+- Click "Execute"
+
+### **🤖 Agent Management**
+```http
+# Start autonomous monitoring
+POST /agent/start-monitoring/
+
+# Stop autonomous monitoring  
+POST /agent/stop-monitoring/
+
+# Get agent status
+GET /agent/status
+
+# Get agent actions history
+GET /agent/actions
+```
+
+### **📊 System Information**
+```http
+Health check
+GET /health
+
+# Knowledge base statistics
+GET /stats
+
+# System metrics
+GET /metrics
+```
+---
+## 🐳 Docker Deployment
+
+### **🚀 Single Container**
+```bash
+# Build and run
+docker build -t devops-sentinel .
+docker run -p 8000:8000 --env-file .env devops-sentinel
+```
+
+### **📦 Docker Compose (Recommended)**
+```bash
+# Full stack deployment
+docker-compose up --build -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+### **☁️ Cloud Deployment**
+
+**Railway.app (Backend):**
+```bash
+# Connect Railway CLI
+railway login
+railway link
+
+# Deploy
+railway up
+```
+
+**Streamlit Cloud (Frontend):**
+1. Connect your GitHub repository
+2. Set deployment branch to `main`
+3. Configure environment variables
+4. Deploy automatically on push
+
+---
+
+## 🔧 Configuration
+
+### **📊 Performance Tuning**
+```python
+# Database connection pooling
+DATABASE_POOL_SIZE = 10
+DATABASE_MAX_OVERFLOW = 20
+
+# LLM rate limiting
+GEMINI_REQUESTS_PER_MINUTE = 60
+EMBEDDING_BATCH_SIZE = 32
+
+# Cache settings
+VECTOR_SEARCH_CACHE_TTL = 3600
+HEALTH_CHECK_INTERVAL = 300
+```
+
+### **🛡️ Security Settings**
+```python
+# CORS configuration
+CORS_ORIGINS = ["https://devops-sentinel.streamlit.app"]
+CORS_METHODS = ["GET", "POST"]
+
+# SSL/TLS
+SSL_VERIFY = True
+SSL_CA_BUNDLE = "certs/isrgrootx1.pem"
+
+# API authentication (future enhancement)
+API_KEY_REQUIRED = False
+```
+
+### **🧠 AI Model Configuration**
+```python
+# Embedding model
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+EMBEDDING_DIMENSION = 384
+
+# LLM settings
+GEMINI_MODEL = "gemini-2.5-flash"
+MAX_TOKENS = 1000
+TEMPERATURE = 0.1
+```
+
+---
 ## 🛠️ Development Journey
 
 ### **🎯 The Story: From Idea to Production-Ready Agent**
@@ -597,512 +1101,6 @@ Day 19: Intelligent DevOps Platform
 ```
 
 **The Result**: A production-ready, autonomous AI agent that transforms DevOps operations from reactive firefighting to proactive intelligent automation.
-
----
-
-## 🤖 AI-Agent Features
-
-### **👁️ Health Monitoring**
-- **System Metrics**: CPU, memory, disk usage tracking
-- **Database Health**: Connection status and query performance
-- **API Monitoring**: Endpoint availability and response times
-- **Pattern Detection**: Anomaly identification and alerting
-
-### 🤖 **Autonomous Intelligence**
-- **Pattern Recognition**: Learns from historical incidents
-- **Predictive Analysis**: Identifies potential issues before they escalate
-- **Auto-remediation**: Executes predefined solutions automatically
-- **Continuous Learning**: Improves accuracy over time
-
-### 🔍 **Advanced RAG Pipeline**
-- **Semantic Search**: Vector-based knowledge retrieval using TiDB Cloud
-- **Context-Aware**: Understands relationships between different DevOps concepts
-- **Multi-Source**: Integrates runbooks, logs, and documentation
-- **Real-time**: Sub-second response times for critical alerts
-
-### **🧠 Machine Learning**
-- **Pattern Learning**: Automatically identifies common issue patterns
-- **Success Tracking**: Monitors solution effectiveness
-- **Predictive Analytics**: Forecasts potential system issues
-- **Recommendation Engine**: Suggests optimal remediation actions
-
-### 🔗 **Enterprise Integrations**
-- **Slack Integration**: Automated notifications and team collaboration
-- **Grafana Webhooks**: Direct alert processing from monitoring systems
-- **REST API**: Easy integration with existing DevOps tools
-- **Docker Ready**: Containerized for any cloud platform
-
-### **📊 Agent Dashboard**
-Access the autonomous agent controls through the Streamlit UI:
-- **Agent Status**: Real-time monitoring state
-- **Action History**: Recent autonomous actions taken
-- **Pattern Database**: Learned patterns and success rates
-- **Manual Controls**: Start/stop agent monitoring
----
-
-## 🛠️ Tech Stack
-
-### **🎨 Frontend**
-- **Streamlit** - Modern Python web framework
-- **Custom CSS** - Responsive design and theming
-- **Real-time Updates** - Live agent status monitoring
-
-### **⚡ Backend**
-- **FastAPI** - High-performance async API framework
-- **SQLAlchemy** - Database ORM with connection pooling
-- **PyMySQL** - MySQL database driver
-- **Schedule** - Background task scheduling
-- **psutil** - System monitoring and metrics
-
-### **🧠 AI & ML**
-- **Google Gemini 2.5 Flash** - Advanced language model
-- **SentenceTransformers** - Semantic embeddings
-- **scikit-learn** - Machine learning utilities
-- **NumPy** - Numerical computing
-
-### **🗄️ Database**
-- **TiDB Cloud** - Distributed SQL database with vector support
-- **Vector Search** - Semantic similarity search capabilities
-- **Connection Pooling** - Optimized database connections
-- **SSL/TLS** - Secure encrypted connections
-
-### **☁️ Deployment**
-- **Railway.app** - Backend hosting and CI/CD
-- **Streamlit Cloud** - Frontend hosting
-- **Docker** - Containerization and portability
-- **GitHub Actions** - Automated deployment pipeline
-
----
-
-## 🚀 Getting Started
-
-### **📋 Prerequisites**
-- Python 3.11+
-- Docker & Docker Compose (optional)
-- TiDB Cloud account
-- Google AI Studio API key
-- Slack webhook URL (optional)
-
-### **⚡ Quick Start (5 minutes)**
-
-1. **Clone the Repository**
-```bash
-git clone https://github.com/15Vaibhavparte/Devops-sentinel.git
-cd Devops-sentinel
-```
-
-2. **Install Dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-3. **Configure Environment**
-```bash
-# Copy example environment file
-cp example.env .env
-
-# Edit .env with your credentials
-# Required: TIDB_*, GEMINI_API_KEY
-# Optional: SLACK_WEBHOOK_URL
-```
-
-4. **Initialize Knowledge Base**
-```bash
-# Ingest DevOps runbooks
-python ingest.py
-```
-
-5. **Run the Application**
-```bash
-# Start backend server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# In another terminal, start frontend (optional - use live demo instead)
-streamlit run ui_clean.py
-```
-
-6. **Test the Agent**
-```bash
-# Test via API
-curl -X POST "http://localhost:8000/process-input/" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "How do I troubleshoot high CPU usage?"}'
-```
-
-### **🔧 Environment Variables**
-
-Create a `.env` file with the following variables:
-
-```env
-# TiDB Cloud Configuration
-TIDB_HOST=gateway01.your-region.prod.aws.tidbcloud.com
-TIDB_PORT=4000
-TIDB_USER=your-username
-TIDB_PASSWORD=your-password
-TIDB_DATABASE=devops_sentinel
-TIDB_SSL_CA=certs/isrgrootx1.pem
-
-# AI Configuration
-GEMINI_API_KEY=your-gemini-api-key
-
-# Integration (Optional)
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/url
-API_BASE_URL=https://your-backend-url.com
-
-
-## **🔔 Integrations**
-### 🔔 Grafana Integration
-
-### **📊 How to Connect Grafana to Your Agent**
-
-Your DevOps Sentinel can automatically process Grafana alerts and provide intelligent solutions. Here's how to set it up:
-
-#### **1. 🎯 Grafana Webhook Configuration**
-
-In your Grafana alerting, set the webhook URL to:
-```
-https://devops-sentinel-production.up.railway.app/process-input/
-```
-
-#### **2. 📋 Step-by-Step Setup**
-
-1. **Open Grafana Dashboard**
-   - Navigate to **Alerting** → **Notification channels**
-   - Click **"New Channel"**
-
-2. **Configure Webhook**
-   - **Name**: `DevOps Sentinel Agent`
-   - **Type**: `Webhook`
-   - **URL**: `https://devops-sentinel-production.up.railway.app/process-input/`
-   - **HTTP Method**: `POST`
-   - **Content Type**: `application/json`
-
-3. **Set Alert Format**
-   ```json
-   {
-     "question": "{{range .Alerts}}Alert: {{.Annotations.summary}} for service {{.Labels.service}}. How do I resolve this issue?{{end}}"
-   }
-   ```
-
-4. **Test the Integration**
-   - Click **"Send Test"** to verify connection
-   - Check your DevOps Sentinel logs for successful processing
-
-#### **3. 🎨 Advanced Alert Templates**
-
-For more detailed alerts, use this custom template:
-
-```json
-{
-  "question": "{{range .Alerts}}🚨 ALERT: {{.Annotations.summary}}\n\n📊 Details:\n- Service: {{.Labels.service}}\n- Instance: {{.Labels.instance}}\n- Severity: {{.Labels.severity}}\n- Value: {{.ValueString}}\n\nWhat are the recommended steps to resolve this {{.Labels.alertname}} issue?{{end}}",
-  "alert_metadata": {
-    "grafana_alert": true,
-    "alert_count": "{{len .Alerts}}",
-    "status": "{{.Status}}"
-  }
-}
-```
-
-#### **4. 🔧 Alert Rule Examples**
-
-**Database Connection Alert:**
-```yaml
-# In your Grafana alert rule
-- alert: DatabaseConnectionTimeout
-  expr: mysql_up == 0
-  for: 2m
-  labels:
-    severity: critical
-    service: mysql-prod
-  annotations:
-    summary: "Database connection timeout detected"
-    description: "MySQL database is unreachable for more than 2 minutes"
-```
-
-**High CPU Usage Alert:**
-```yaml
-- alert: HighCPUUsage
-  expr: cpu_usage_percent > 80
-  for: 5m
-  labels:
-    severity: warning
-    service: web-server
-  annotations:
-    summary: "High CPU usage detected"
-    description: "CPU usage is above 80% for 5 minutes"
-```
-
-#### **5. 🎯 What Happens When Grafana Sends an Alert**
-
-```mermaid
-sequenceDiagram
-    participant G as 📊 Grafana
-    participant DS as 🤖 DevOps Sentinel
-    participant T as 🗄️ TiDB Cloud
-    participant AI as 🧠 Gemini AI
-    participant S as 💬 Slack
-
-    G->>DS: Webhook Alert
-    Note over DS: Transform alert to question
-    DS->>T: Vector search for solutions
-    T-->>DS: Relevant knowledge
-    DS->>AI: Generate solution
-    AI-->>DS: Intelligent response
-    DS->>S: Send solution to team
-    Note over DS: Learn from interaction
-```
-
-## 📱 Slack Integration (Optional)**
-
-To receive alert solutions in Slack automatically:
-
-1. **Create Slack Webhook**
-   - Go to your Slack workspace
-   - Create a new webhook URL
-   - Copy the webhook URL
-
-2. **Configure Environment Variable**
-   ```bash
-   # In Railway or your deployment
-   SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
-   ```
-
-3. **Automatic Notifications**
-   - DevOps Sentinel will automatically send solutions to Slack
-   - Include alert details and AI-generated remediation steps
-   - Team gets instant actionable guidance
-
-#### **6. 🧪 Testing Your Integration**
-
-**Manual Test via Grafana:**
-```bash
-# Test webhook directly from Grafana UI
-# Use the "Send Test" button in notification channels
-```
-
-**API Test (PowerShell):**
-```powershell
-# Simulate a Grafana alert
-$grafanaAlert = @{
-    question = "🚨 ALERT: Database connection timeout detected for mysql-prod. How do I resolve this issue?"
-    alert_metadata = @{
-        grafana_alert = $true
-        alert_count = 1
-        status = "firing"
-    }
-} | ConvertTo-Json
-
-Invoke-RestMethod -Uri "https://devops-sentinel-production.up.railway.app/process-input/" -Method POST -Body $grafanaAlert -ContentType "application/json"
-```
-
-**Verify Agent Learning:**
-```powershell
-# Check if agent learned from the alert
-Invoke-RestMethod -Uri "https://devops-sentinel-production.up.railway.app/agent/actions" -Method GET
-```
-
-#### **7. 📊 Monitoring Integration Health**
-
-**Check Agent Status:**
-- Visit your [DevOps Sentinel Dashboard](https://devops-sentinel.streamlit.app)
-- Monitor **Autonomous Actions** counter
-- View **Patterns Learned** section
-
-**Grafana Integration Metrics:**
-- **Alert Processing Time**: How fast solutions are generated
-- **Pattern Recognition**: How well the agent learns from alerts
-- **Solution Accuracy**: Feedback from team on solution quality
-
-#### **8. 🎯 Best Practices**
-
-**Alert Naming:**
-- Use descriptive alert names: `DatabaseConnectionTimeout`, `HighMemoryUsage`
-- Include service names in labels for better context
-
-**Alert Frequency:**
-- Set appropriate `for` durations to avoid alert storms
-- Use different webhooks for different severity levels
-
-**Solution Quality:**
-- Regularly update your knowledge base with new runbooks
-- Review agent-generated solutions and provide feedback
-- Use the agent's learning capabilities to improve over time
-
-**Team Workflow:**
-```
-🚨 Grafana Alert → 🤖 Agent Processes → 💬 Slack Notification → 👩‍💻 Team Acts → 📚 Knowledge Updated
-```
-
----
-
-### **🎉 Ready to Go!**
-
-Your Grafana alerts will now automatically trigger intelligent DevOps solutions! The agent will:
-- ✅ **Process alerts instantly**
-- ✅ **Generate actionable solutions**
-- ✅ **Notify your team via Slack**
-- ✅ **Learn from each interaction**
-- ✅ **Improve responses over time**
-
-
-
-## **📚 Interactive API Documentation**
-
-#### **🌐 Access Swagger UI**
-
-**Live Demo:**
-```
-https://devops-sentinel-production.up.railway.app/docs
-```
-
-#### **📋 How to Use Locally**
-
-1. **Start the Backend Server**
-   ```bash
-   cd Devops-sentinel
-   python -m uvicorn main:app --reload --port 8000
-   ```
-
-2. **Open Swagger UI**
-   - Go to: `http://localhost:8000/docs` in your browser
-   - The interactive API documentation will load
-
-3. **Test Any Endpoint**
-   - Click on any endpoint (like `POST /process-input/`)
-   - Click **"Try it out"**
-   - Edit the example JSON if needed
-   - Click **"Execute"** to test
-
-#### **🧪 Quick Local Tests**
-
-### **🔍 Query & Analysis**
-```http
-POST /process-input/
-Content-Type: application/json
-
-{
-  "question": "How do I fix database connection timeouts?"
-}
-```
-
-**Test the AI Agent:**
-- Go to `POST /process-input/`
-- Click "Try it out"
-- Replace with: `{"question": "How do I fix Docker issues?"}`
-- Click "Execute"
-
-### **🤖 Agent Management**
-```http
-# Start autonomous monitoring
-POST /agent/start-monitoring/
-
-# Stop autonomous monitoring  
-POST /agent/stop-monitoring/
-
-# Get agent status
-GET /agent/status
-
-# Get agent actions history
-GET /agent/actions
-```
-
-### **📊 System Information**
-```http
-Health check
-GET /health
-
-# Knowledge base statistics
-GET /stats
-
-# System metrics
-GET /metrics
-```
----
-## 🐳 Docker Deployment
-
-### **🚀 Single Container**
-```bash
-# Build and run
-docker build -t devops-sentinel .
-docker run -p 8000:8000 --env-file .env devops-sentinel
-```
-
-### **📦 Docker Compose (Recommended)**
-```bash
-# Full stack deployment
-docker-compose up --build -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
-### **☁️ Cloud Deployment**
-
-**Railway.app (Backend):**
-```bash
-# Connect Railway CLI
-railway login
-railway link
-
-# Deploy
-railway up
-```
-
-**Streamlit Cloud (Frontend):**
-1. Connect your GitHub repository
-2. Set deployment branch to `main`
-3. Configure environment variables
-4. Deploy automatically on push
-
----
-
-## 🔧 Configuration
-
-### **📊 Performance Tuning**
-```python
-# Database connection pooling
-DATABASE_POOL_SIZE = 10
-DATABASE_MAX_OVERFLOW = 20
-
-# LLM rate limiting
-GEMINI_REQUESTS_PER_MINUTE = 60
-EMBEDDING_BATCH_SIZE = 32
-
-# Cache settings
-VECTOR_SEARCH_CACHE_TTL = 3600
-HEALTH_CHECK_INTERVAL = 300
-```
-
-### **🛡️ Security Settings**
-```python
-# CORS configuration
-CORS_ORIGINS = ["https://devops-sentinel.streamlit.app"]
-CORS_METHODS = ["GET", "POST"]
-
-# SSL/TLS
-SSL_VERIFY = True
-SSL_CA_BUNDLE = "certs/isrgrootx1.pem"
-
-# API authentication (future enhancement)
-API_KEY_REQUIRED = False
-```
-
-### **🧠 AI Model Configuration**
-```python
-# Embedding model
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-EMBEDDING_DIMENSION = 384
-
-# LLM settings
-GEMINI_MODEL = "gemini-2.5-flash"
-MAX_TOKENS = 1000
-TEMPERATURE = 0.1
-```
-
----
 
 ## 🤝 Contributing
 
