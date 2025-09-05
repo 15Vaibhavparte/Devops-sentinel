@@ -1139,6 +1139,8 @@ class AgentState:
         self.last_health_check = None
         self.alert_history = []
         self.learned_patterns = {}
+        self.recent_predictions = {}  # Track recent predictions to prevent spam
+        self.last_slack_notification = {}  # Track last notification time per pattern
         self.autonomous_actions_taken = []
 
 agent_state = AgentState()
@@ -1172,7 +1174,7 @@ async def stop_autonomous_monitoring():
 def run_monitoring_scheduler():
     """Background scheduler for autonomous monitoring"""
     schedule.every(5).minutes.do(autonomous_health_check)  # Every 5 minutes instead of 30 seconds
-    schedule.every(10).minutes.do(predictive_analysis)     # Every 10 minutes instead of 5
+    schedule.every(60).minutes.do(predictive_analysis)     # Every 60 minutes (1 hour) to reduce spam
     schedule.every(30).minutes.do(pattern_learning)       # Every 30 minutes instead of 15
     
     while agent_state.monitoring_active:
@@ -1365,17 +1367,30 @@ def predictive_analysis():
             most_common = max(set(alert_types), key=alert_types.count)
             
             if alert_types.count(most_common) >= 3:
-                # Pattern detected - proactive action
-                prediction = {
-                    "pattern": f"Recurring {most_common} alerts",
-                    "confidence": alert_types.count(most_common) / len(alert_types),
-                    "recommendation": f"Investigate root cause of {most_common}",
-                    "timestamp": datetime.now().isoformat()
-                }
+                # Pattern detected - check if we already notified recently
+                pattern_key = f"pattern_{most_common}"
+                current_time = time.time()
                 
-                send_agent_notification(f"🔮 Agent Prediction: Pattern detected - {prediction['pattern']} (confidence: {prediction['confidence']:.1%})")
+                # Only send notification if we haven't sent one for this pattern in the last 2 hours
+                last_notification = agent_state.last_slack_notification.get(pattern_key, 0)
+                time_since_last = current_time - last_notification
                 
-                print(f"🎯 Agent: Detected pattern - {prediction['pattern']}")
+                if time_since_last > 7200:  # 2 hours = 7200 seconds
+                    prediction = {
+                        "pattern": f"Recurring {most_common} alerts",
+                        "confidence": alert_types.count(most_common) / len(alert_types),
+                        "recommendation": f"Investigate root cause of {most_common}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    
+                    send_agent_notification(f"🔮 Agent Prediction: Pattern detected - {prediction['pattern']} (confidence: {prediction['confidence']:.1%})")
+                    
+                    # Update last notification time
+                    agent_state.last_slack_notification[pattern_key] = current_time
+                    
+                    print(f"🎯 Agent: Detected pattern - {prediction['pattern']}")
+                else:
+                    print(f"🔕 Agent: Pattern {most_common} detected but notification throttled (last sent {time_since_last/60:.1f} min ago)")
     
     except Exception as e:
         print(f"❌ Agent: Predictive analysis failed: {e}")
