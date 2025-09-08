@@ -19,7 +19,7 @@ _Your AI-Powered Autonomous Agent for DevOps Operations_
 
 | Component | Live URL | Purpose |
 |-----------|----------|---------|
-| **🎨 Frontend UI** | [devops-sentinel.streamlit.app](devops-sentinel-tlo7o7sh99xkkiyh9rsel5.streamlit.app ) | Interactive agent interface |
+| **🎨 Frontend UI** | [devops-sentinel.streamlit.app](https://devops-sentinel-tlo7o7sh99xkkiyh9rsel5.streamlit.app/?embed=true) | Interactive agent interface |
 | **⚡ Backend API** | [devops-sentinel-production.up.railway.app](https://devops-sentinel-production.up.railway.app) | REST API endpoints |
 | **📊 API Health** | [/health](https://devops-sentinel-production.up.railway.app/health) | System status check |
 | **📚 API Docs** | [/docs](https://devops-sentinel-production.up.railway.app/docs) | Interactive API documentation |
